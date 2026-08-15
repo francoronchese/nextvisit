@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Test output
+coverage/
+
+# Local Postgres data files
+data/
+postgres-data/
+pgdata/
+*.sqlite
+*.db

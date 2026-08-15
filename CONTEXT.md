@@ -60,6 +60,8 @@ _Avoid_: Time, opening, availability
 A link sent by email with a booking that authorizes cancelling or rescheduling that appointment without logging in. It can be used once, and expires when the appointment passes.
 _Avoid_: Token, magic link, auth link
 
+_Note_: the glossary avoids *token* as a name for the link itself, but the unguessable credential the link carries is `one_time_links.token` (and `:token` in the API, see ticket 05). Naming the credential `token` is deliberate; the one-time link is the full URL, not the credential.
+
 **Cancellation Window**:
 The period before an appointment during which the patient can cancel online. After it closes, cancellation requires calling the clinic.
 _Avoid_: Cutoff, deadline, policy

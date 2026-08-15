@@ -160,6 +160,8 @@ A single domain concept (e.g. Appointment) typically has BOTH: a table definitio
 
 No cache or queue. Reminders are driven by Vercel Cron querying upcoming appointments.
 
+See `DATA-MODEL.md` for the full data model: entity purposes, a Mermaid ER diagram, critical constraints, the appointment lifecycle, RBAC, migrations, and seed data.
+
 ## 5. External Integrations / APIs
 
 - **Service Name**: Resend
