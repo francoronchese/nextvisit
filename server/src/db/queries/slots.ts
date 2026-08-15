@@ -62,7 +62,7 @@ export async function listBookedAppointmentsForDoctor(
     `SELECT to_char(starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.000"Z"') AS "startsAt",
             duration_minutes AS "durationMinutes"
      FROM appointments
-     WHERE doctor_id = $1 AND status <> 'cancelled' AND starts_at >= $2 AND starts_at < $3
+     WHERE doctor_id = $1 AND status = 'scheduled' AND starts_at >= $2 AND starts_at < $3
      ORDER BY starts_at`,
     [doctorId, fromInstant, toInstant]
   );

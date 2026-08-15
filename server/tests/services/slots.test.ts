@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AppointmentType, Availability, AvailabilityBlock, Doctor, Slot } from "@nextvisit/shared";
-import { createSlotsService, SlotsNotFoundError, type BookedAppointment, type SlotQueries } from "../../src/services/slots";
+import { createSlotsService, type BookedAppointment, type SlotQueries } from "../../src/services/slots";
+import { NotFoundError } from "../../src/utils/notFoundError";
 
 const cardioId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
 const maria: Doctor = {
@@ -181,7 +182,7 @@ describe("slots service", () => {
     const service = createSlotsService(buildFakeQueries());
     await expect(
       service.getSlotsForDoctor("00000000-0000-0000-0000-000000000000", consulta.id, MONDAY)
-    ).rejects.toBeInstanceOf(SlotsNotFoundError);
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("defaults the range start to today in the clinic timezone", async () => {
@@ -199,7 +200,7 @@ describe("slots service", () => {
     const service = createSlotsService(buildFakeQueries());
     await expect(
       service.getSlotsForDoctor(maria.id, "00000000-0000-0000-0000-000000000000", MONDAY)
-    ).rejects.toBeInstanceOf(SlotsNotFoundError);
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("rejects a doctor that does not offer the appointment type", async () => {
@@ -207,7 +208,7 @@ describe("slots service", () => {
       buildFakeQueries({ getDoctorOffersType: () => Promise.resolve(false) })
     );
     await expect(service.getSlotsForDoctor(maria.id, consulta.id, MONDAY)).rejects.toBeInstanceOf(
-      SlotsNotFoundError
+      NotFoundError
     );
   });
 });

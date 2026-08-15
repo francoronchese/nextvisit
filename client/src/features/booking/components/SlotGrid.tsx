@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { parseDateParts } from "@nextvisit/shared";
 import type { Slot } from "../booking.types";
 
 type SlotGridProps = {
@@ -21,8 +22,8 @@ function groupByDate(slots: Slot[]): { date: string; slots: Slot[] }[] {
 }
 
 function formatDate(date: string): string {
-  const [year, month, day] = date.split("-");
-  const parts = new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("es-AR", {
+  const { year, month, day } = parseDateParts(date);
+  const parts = new Date(year, month - 1, day).toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",

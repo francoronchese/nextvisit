@@ -6,6 +6,7 @@ import {
   listDoctorsForType,
   listSpecialties,
 } from "../db/queries/catalog";
+import { NotFoundError } from "../utils/notFoundError";
 
 export type CatalogQueries = {
   listSpecialties(): Promise<Specialty[]>;
@@ -15,28 +16,21 @@ export type CatalogQueries = {
   listDoctorsForType(typeId: string): Promise<Doctor[]>;
 };
 
-export class CatalogNotFoundError extends Error {
-  constructor(resource: "specialty" | "type") {
-    super(`${resource} not found`);
-    this.name = "CatalogNotFoundError";
-  }
-}
-
 export type CatalogService = {
   getSpecialties(): Promise<Specialty[]>;
   getAppointmentTypesForSpecialty(specialtyId: string): Promise<AppointmentType[]>;
   getDoctorsForType(typeId: string): Promise<Doctor[]>;
 };
 
-async function requireChildren<T>(
+async function listChildrenOfExistingParent<T>(
   parentId: string,
   getParent: (id: string) => Promise<{ id: string } | undefined>,
   listChildren: (parentId: string) => Promise<T[]>,
-  resource: "specialty" | "type"
+  resource: string
 ): Promise<T[]> {
   const parent = await getParent(parentId);
   if (!parent) {
-    throw new CatalogNotFoundError(resource);
+    throw new NotFoundError(resource);
   }
   return listChildren(parentId);
 }
@@ -47,7 +41,7 @@ export function createCatalogService(queries: CatalogQueries): CatalogService {
       return queries.listSpecialties();
     },
     getAppointmentTypesForSpecialty(specialtyId: string) {
-      return requireChildren(
+      return listChildrenOfExistingParent(
         specialtyId,
         queries.getSpecialtyById,
         queries.listAppointmentTypesForSpecialty,
@@ -55,7 +49,7 @@ export function createCatalogService(queries: CatalogQueries): CatalogService {
       );
     },
     getDoctorsForType(typeId: string) {
-      return requireChildren(
+      return listChildrenOfExistingParent(
         typeId,
         queries.getAppointmentTypeById,
         queries.listDoctorsForType,

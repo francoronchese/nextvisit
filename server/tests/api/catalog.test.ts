@@ -4,6 +4,7 @@ import request from "supertest";
 import { getTestDatabaseUrl } from "../../config/env";
 import { runMigrations } from "../../src/db/migrate";
 import app from "../../src/index";
+import { truncateAll } from "../fixtures";
 
 const pool = new Pool({ connectionString: getTestDatabaseUrl() });
 
@@ -99,9 +100,7 @@ async function seedCatalog(): Promise<CatalogFixture> {
 
 beforeAll(async () => {
   await runMigrations(pool);
-  await pool.query(
-    "TRUNCATE appointments, one_time_links, booking_attempts, patients, doctor_appointment_types, availabilities, availability_blocks, doctors, appointment_types, health_insurances, specialties RESTART IDENTITY CASCADE"
-  );
+  await truncateAll(pool);
 });
 
 afterAll(async () => {

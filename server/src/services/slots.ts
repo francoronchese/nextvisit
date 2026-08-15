@@ -1,4 +1,5 @@
 import type { AppointmentType, Availability, AvailabilityBlock, Doctor, Slot } from "@nextvisit/shared";
+import { parseDateParts, parseTimeParts } from "@nextvisit/shared";
 import { getAppointmentTypeById } from "../db/queries/catalog";
 import {
   getDoctorById,
@@ -9,6 +10,7 @@ import {
   type BookedAppointment,
 } from "../db/queries/slots";
 import { clinicLocalToUtc, utcToClinicParts } from "../utils/clinicTimezone";
+import { NotFoundError } from "../utils/notFoundError";
 
 export type { BookedAppointment };
 
@@ -29,13 +31,6 @@ export type SlotQueries = {
   ): Promise<BookedAppointment[]>;
 };
 
-export class SlotsNotFoundError extends Error {
-  constructor(resource: "doctor" | "appointment type") {
-    super(`${resource} not found`);
-    this.name = "SlotsNotFoundError";
-  }
-}
-
 export type SlotsService = {
   getSlotsForDoctor(
     doctorId: string,
@@ -46,8 +41,8 @@ export type SlotsService = {
 };
 
 function toMinutes(time: string): number {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours! * 60 + minutes!;
+  const { hour, minute } = parseTimeParts(time);
+  return hour * 60 + minute;
 }
 
 function fromMinutes(minutes: number): string {
@@ -57,14 +52,14 @@ function fromMinutes(minutes: number): string {
 }
 
 function addDays(date: string, days: number): string {
-  const [year, month, day] = date.split("-").map(Number);
-  const utc = new Date(Date.UTC(year!, month! - 1, day! + days));
+  const { year, month, day } = parseDateParts(date);
+  const utc = new Date(Date.UTC(year, month - 1, day + days));
   return utc.toISOString().slice(0, 10);
 }
 
 function isoWeekday(date: string): number {
-  const [year, month, day] = date.split("-").map(Number);
-  const dow = new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay();
+  const { year, month, day } = parseDateParts(date);
+  const dow = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   return dow === 0 ? 7 : dow;
 }
 
@@ -134,15 +129,15 @@ export function createSlotsService(queries: SlotQueries): SlotsService {
 
       const doctor = await queries.getDoctorById(doctorId);
       if (!doctor) {
-        throw new SlotsNotFoundError("doctor");
+        throw new NotFoundError("doctor");
       }
       const type = await queries.getAppointmentTypeById(typeId);
       if (!type) {
-        throw new SlotsNotFoundError("appointment type");
+        throw new NotFoundError("appointment type");
       }
       const offersType = await queries.getDoctorOffersType(doctorId, typeId);
       if (!offersType) {
-        throw new SlotsNotFoundError("appointment type");
+        throw new NotFoundError("appointment type");
       }
 
       const lastDate = addDays(startDate, rangeDays - 1);

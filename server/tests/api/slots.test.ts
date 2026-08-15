@@ -5,75 +5,33 @@ import { getTestDatabaseUrl } from "../../config/env";
 import { runMigrations } from "../../src/db/migrate";
 import app from "../../src/index";
 import { clinicLocalToUtc } from "../../src/utils/clinicTimezone";
+import {
+  insertAppointment,
+  insertAvailability,
+  insertBlock,
+  seedBaseFixture,
+  truncateAll,
+} from "../fixtures";
 
 const pool = new Pool({ connectionString: getTestDatabaseUrl() });
-
-type SlotsFixture = {
-  doctorId: string;
-  patientId: string;
-  typeId: string;
-};
 
 // 2026-09-07 is a Monday.
 const MONDAY = "2026-09-07";
 
-async function seedSlots(): Promise<SlotsFixture> {
-  const client = await pool.connect();
-  try {
-    const specialty = await client.query(
-      "INSERT INTO specialties (name) VALUES ($1) RETURNING id",
-      [`slots-api-specialty-${Date.now()}`]
-    );
-    const specialtyId = specialty.rows[0].id as string;
-    const insurance = await client.query(
-      "INSERT INTO health_insurances (name, copay_amount) VALUES ($1, 100) RETURNING id",
-      [`slots-api-insurance-${Date.now()}`]
-    );
-    const insuranceId = insurance.rows[0].id as string;
-    const doctor = await client.query(
-      "INSERT INTO doctors (specialty_id, first_name, last_name) VALUES ($1, $2, $3) RETURNING id",
-      [specialtyId, "María", "González"]
-    );
-    const doctorId = doctor.rows[0].id as string;
-    const type = await client.query(
-      "INSERT INTO appointment_types (specialty_id, name, duration_minutes) VALUES ($1, $2, $3) RETURNING id",
-      [specialtyId, "Cardiology consultation", 30]
-    );
-    const typeId = type.rows[0].id as string;
-    await client.query(
-      "INSERT INTO doctor_appointment_types (doctor_id, appointment_type_id) VALUES ($1, $2)",
-      [doctorId, typeId]
-    );
-    await client.query(
-      "INSERT INTO availabilities (doctor_id, weekday, start_time, end_time) VALUES ($1, 1, '09:00', '13:00')",
-      [doctorId]
-    );
-    await client.query(
-      "INSERT INTO availability_blocks (doctor_id, date, start_time, end_time, reason) VALUES ($1, $2, '10:00', '11:00', 'Holiday')",
-      [doctorId, MONDAY]
-    );
-    const patient = await client.query(
-      "INSERT INTO patients (dni, first_name, last_name, health_insurance_id, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [`${Date.now()}`, "Test", "Patient", insuranceId, "555-0100"]
-    );
-    const patientId = patient.rows[0].id as string;
-    await client.query(
-      `INSERT INTO appointments
-        (patient_id, doctor_id, appointment_type_id, starts_at, duration_minutes, booking_channel, copay_amount)
-       VALUES ($1, $2, $3, $4, 30, 'web', 100)`,
-      [patientId, doctorId, typeId, clinicLocalToUtc(MONDAY, "11:00").toISOString()]
-    );
-    return { doctorId, patientId, typeId };
-  } finally {
-    client.release();
-  }
+async function seedSlots(): Promise<{ doctorId: string; typeId: string }> {
+  const fixture = await seedBaseFixture(pool, "slots-api");
+  await insertAvailability(pool, fixture.doctorId);
+  await insertBlock(pool, fixture.doctorId, MONDAY);
+  await insertAppointment(pool, {
+    ...fixture,
+    startsAt: clinicLocalToUtc(MONDAY, "11:00").toISOString(),
+  });
+  return { doctorId: fixture.doctorId, typeId: fixture.typeId };
 }
 
 beforeAll(async () => {
   await runMigrations(pool);
-  await pool.query(
-    "TRUNCATE appointments, one_time_links, booking_attempts, patients, doctor_appointment_types, availabilities, availability_blocks, doctors, appointment_types, health_insurances, specialties RESTART IDENTITY CASCADE"
-  );
+  await truncateAll(pool);
 });
 
 afterAll(async () => {

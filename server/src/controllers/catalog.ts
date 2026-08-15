@@ -1,17 +1,9 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { appointmentTypeSchema, doctorSchema, specialtySchema } from "@nextvisit/shared";
-import { catalogService, CatalogNotFoundError } from "../services/catalog";
-import { idParamSchema } from "../validators/catalog";
-
-function parseIdParam(req: Request, res: Response): string | undefined {
-  const result = idParamSchema.safeParse(req.params);
-  if (!result.success) {
-    res.status(400).json({ error: "invalid id" });
-    return undefined;
-  }
-  return result.data.id;
-}
+import { catalogService } from "../services/catalog";
+import { parseIdParam } from "../utils/parseIdParam";
+import { NotFoundError } from "../utils/notFoundError";
 
 async function respondWithResource<T>(
   res: Response,
@@ -21,7 +13,7 @@ async function respondWithResource<T>(
   try {
     res.json(responseSchema.parse(await resource()));
   } catch (error) {
-    if (error instanceof CatalogNotFoundError) {
+    if (error instanceof NotFoundError) {
       res.status(404).json({ error: error.message });
       return;
     }

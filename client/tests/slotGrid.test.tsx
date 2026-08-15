@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { SlotGrid } from "../src/features/booking/components/SlotGrid";
-import type { Slot } from "../src/features/booking/booking.types";
+import { SlotGrid } from "../src/features/booking";
+import type { Slot } from "@nextvisit/shared";
 
 const MONDAY_SLOTS: Slot[] = [
   { date: "2026-09-07", startTime: "09:00", endTime: "09:30", available: true },

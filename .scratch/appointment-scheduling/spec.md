@@ -67,7 +67,7 @@ A web app with two surfaces: a public booking flow where a patient enters their 
 - **Roles & admin panel**: `users` table with roles admin/secretary/doctor, email + hashed password. Admin: credentials + health-insurance/copay CRUD. Secretary: availability, availability blocks, booking on behalf, cancel/reschedule any appointment, attendance/copay. Doctor: read-only list of their upcoming appointments.
 - **Emails**: confirmation (immediate), reminder (24h before final appointment time, skipped if cancelled; sent even if rescheduled within 24h), and reschedule/cancel notices. Sent whenever the patient provided an email, regardless of Booking Channel.
 - **API contract** (REST, JSON, Zod-validated):
-  - `GET /api/specialties`, `GET /api/specialties/:id/types`, `GET /api/types/:id/doctors`, `GET /api/doctors/:id/slots?date=YYYY-MM-DD`
+  - `GET /api/specialties`, `GET /api/specialties/:id/types`, `GET /api/types/:id/doctors`, `GET /api/doctors/:id/slots?typeId=<uuid>&date=YYYY-MM-DD` (typeId required — slots must respect the appointment type's fixed duration; date optional, defaults to today in the clinic timezone)
   - `POST /api/bookings` (creates Patient + Appointment, triggers confirmation email)
   - `GET /api/appointments/:token`, `POST /api/appointments/:token/cancel`, `POST /api/appointments/:token/reschedule`
   - Admin: `POST /api/admin/login`; availability & blocks CRUD; `POST /api/admin/appointments` (secretary booking); `PATCH /api/admin/appointments/:id` (attendance, copay, cancel/reschedule)

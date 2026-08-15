@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";
-import {
-  CatalogNotFoundError,
-  createCatalogService,
-  type CatalogQueries,
-} from "../../src/services/catalog";
+import { createCatalogService, type CatalogQueries } from "../../src/services/catalog";
+import { NotFoundError } from "../../src/utils/notFoundError";
 
 const cardio: Specialty = { id: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", name: "Cardiology" };
 const derma: Specialty = { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12", name: "Dermatology" };
@@ -86,7 +83,7 @@ describe("catalog service", () => {
     const service = createCatalogService(buildFakeQueries());
     await expect(
       service.getAppointmentTypesForSpecialty(UNKNOWN_ID)
-    ).rejects.toBeInstanceOf(CatalogNotFoundError);
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it("lists the doctors offering an appointment type", async () => {
@@ -97,7 +94,7 @@ describe("catalog service", () => {
   it("rejects an unknown appointment type", async () => {
     const service = createCatalogService(buildFakeQueries());
     await expect(service.getDoctorsForType(UNKNOWN_ID)).rejects.toBeInstanceOf(
-      CatalogNotFoundError
+      NotFoundError
     );
   });
 });

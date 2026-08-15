@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [x] `GET /api/doctors/:id/slots?date=YYYY-MM-DD` returns available slots for a date range
+- [x] `GET /api/doctors/:id/slots?typeId=<uuid>&date=YYYY-MM-DD` returns available slots for a date range (typeId required, date optional)
 - [x] Slot computation query: doctor's weekly availability − availability_blocks − booked appointments
 - [x] Slots respect the appointment type's fixed duration
 - [x] UI: slot grid in `features/booking/` showing dates and times for the next 30 days
