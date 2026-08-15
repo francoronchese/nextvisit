@@ -50,6 +50,12 @@ async function defaultFetch(input: RequestInfo | URL): Promise<Response> {
   if (url === `/api/types/${consultaCardio.id}/doctors`) {
     return jsonResponse([maria, jorge]);
   }
+  if (url.includes(`/api/doctors/${maria.id}/slots`)) {
+    return jsonResponse([
+      { date: "2026-09-07", startTime: "09:00", endTime: "09:30", available: true },
+      { date: "2026-09-07", startTime: "09:30", endTime: "10:00", available: false },
+    ]);
+  }
   return jsonResponse({ error: "not found" }, 404);
 }
 
@@ -128,6 +134,7 @@ describe("BookingFlow — catalog browsing steps", () => {
 
     await user.click(screen.getByRole("button", { name: /Back/ }));
     await user.click(screen.getByRole("button", { name: /Back/ }));
+    await user.click(screen.getByRole("button", { name: /Back/ }));
 
     expect(screen.getByRole("button", { name: "Cardiology" })).toHaveAttribute(
       "aria-pressed",
@@ -157,6 +164,7 @@ describe("BookingFlow — catalog browsing steps", () => {
 
     await user.click(screen.getByRole("button", { name: /Back/ }));
     await user.click(screen.getByRole("button", { name: /Back/ }));
+    await user.click(screen.getByRole("button", { name: /Back/ }));
     await user.click(screen.getByRole("button", { name: "Cardiology" }));
 
     expect(screen.getByRole("button", { name: /Cardiology consultation/ })).toHaveAttribute(
@@ -169,6 +177,30 @@ describe("BookingFlow — catalog browsing steps", () => {
       "aria-pressed",
       "true"
     );
+  });
+
+  it("advances to the slot grid after picking a doctor and lets the patient pick a slot", async () => {
+    const user = userEvent.setup();
+    render(<BookingFlow />);
+
+    await user.click(await screen.findByRole("button", { name: "Cardiology" }));
+    await user.click(await screen.findByRole("button", { name: /Cardiology consultation/ }));
+    await user.click(await screen.findByRole("button", { name: "María González" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Pick a time for your appointment" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Lunes, 7 de septiembre/ })
+    ).toBeInTheDocument();
+
+    const available = await screen.findByRole("button", { name: /09:00/ });
+    expect(available).not.toHaveAttribute("aria-disabled");
+    const unavailable = screen.getByRole("button", { name: /09:30/ });
+    expect(unavailable).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(available);
+    expect(screen.getByText(/You chose 2026-09-07 at 09:00/)).toBeInTheDocument();
   });
 
   it("clears downstream selections when picking a different specialty", async () => {

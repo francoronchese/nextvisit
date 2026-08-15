@@ -1,6 +1,7 @@
 import express from "express";
 import "../config/env";
 import { catalogRouter } from "./api/catalog";
+import { slotsRouter } from "./api/slots";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
@@ -13,6 +14,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api", catalogRouter);
+app.use("/api", slotsRouter);
 
 app.use(errorHandler);
 

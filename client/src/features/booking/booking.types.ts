@@ -1,1 +1,1 @@
-export type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";
+export type { AppointmentType, Doctor, Slot, Specialty } from "@nextvisit/shared";

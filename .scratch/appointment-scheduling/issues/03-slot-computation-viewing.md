@@ -6,11 +6,12 @@
 
 **Status:** ready-for-agent
 
-- [ ] `GET /api/doctors/:id/slots?date=YYYY-MM-DD` returns available slots for a date range
-- [ ] Slot computation query: doctor's weekly availability − availability_blocks − booked appointments
-- [ ] Slots respect the appointment type's fixed duration
-- [ ] UI: slot grid in `features/booking/` showing dates and times for the next 30 days
-- [ ] Past time slots are not shown
-- [ ] Visual distinction between available and unavailable slots
-- [ ] Service-layer unit tests for slot computation (availability minus blocks, minus booked)
-- [ ] Query-layer integration tests for the slot query against local Postgres
+- [x] `GET /api/doctors/:id/slots?date=YYYY-MM-DD` returns available slots for a date range
+- [x] Slot computation query: doctor's weekly availability − availability_blocks − booked appointments
+- [x] Slots respect the appointment type's fixed duration
+- [x] UI: slot grid in `features/booking/` showing dates and times for the next 30 days
+- [x] Past time slots are not shown
+- [x] Visual distinction between available and unavailable slots
+- [x] Service-layer unit tests for slot computation (availability minus blocks, minus booked)
+- [x] Query-layer integration tests for the slot query against local Postgres
+- [x] Seed data includes weekly availabilities so the slot grid is populated

@@ -1,16 +1,19 @@
 import { useState } from "react";
-import type { AppointmentType, Doctor, Specialty } from "../booking.types";
+import type { AppointmentType, Doctor, Slot, Specialty } from "../booking.types";
 import { useAppointmentTypes, useDoctorsForType, useSpecialties } from "../hooks/useCatalog";
+import { useSlots } from "../hooks/useSlots";
 import { OptionList } from "./OptionList";
+import { SlotGrid } from "./SlotGrid";
 import { StepCard } from "./StepCard";
 
 type Selections = {
   specialty?: Specialty;
   type?: AppointmentType;
   doctor?: Doctor;
+  slot?: Slot;
 };
 
-const STEP_LABELS = ["Specialty", "Appointment type", "Doctor"];
+const STEP_LABELS = ["Specialty", "Appointment type", "Doctor", "Slot"];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -40,6 +43,7 @@ export function BookingFlow() {
   const specialties = useSpecialties();
   const types = useAppointmentTypes(selections.specialty?.id);
   const doctors = useDoctorsForType(selections.type?.id);
+  const slots = useSlots(selections.doctor?.id, selections.type?.id);
 
   const selectSpecialty = (specialty: Specialty) => {
     setSelections((previous) => {
@@ -56,13 +60,18 @@ export function BookingFlow() {
       if (previous.type?.id === type.id) {
         return { ...previous, type };
       }
-      return { ...previous, type, doctor: undefined };
+      return { ...previous, type, doctor: undefined, slot: undefined };
     });
     setStep(2);
   };
 
   const selectDoctor = (doctor: Doctor) => {
-    setSelections((previous) => ({ ...previous, doctor }));
+    setSelections((previous) => ({ ...previous, doctor, slot: undefined }));
+    setStep(3);
+  };
+
+  const selectSlot = (slot: Slot) => {
+    setSelections((previous) => ({ ...previous, slot }));
   };
 
   const goBack = () => setStep((previous) => Math.max(0, previous - 1));
@@ -121,9 +130,25 @@ export function BookingFlow() {
             onSelect={selectDoctor}
             onRetry={doctors.retry}
           />
-          {selections.doctor && (
+        </StepCard>
+      )}
+      {step === 3 && (
+        <StepCard
+          title="Pick a time for your appointment"
+          subtitle={`${selections.doctor?.firstName} ${selections.doctor?.lastName} — ${selections.type?.name}`}
+          onBack={goBack}
+        >
+          <SlotGrid
+            slots={slots.data ?? []}
+            loading={slots.loading}
+            error={slots.error}
+            selectedSlot={selections.slot}
+            onSelect={selectSlot}
+            onRetry={slots.retry}
+          />
+          {selections.slot && (
             <p className="mt-6 text-lg font-medium text-gray-700">
-              You chose {selections.doctor.firstName} {selections.doctor.lastName}.
+              You chose {selections.slot.date} at {selections.slot.startTime}.
             </p>
           )}
         </StepCard>

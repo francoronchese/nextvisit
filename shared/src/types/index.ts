@@ -12,3 +12,4 @@ export * from "./appointment";
 export * from "./oneTimeLink";
 export * from "./user";
 export * from "./bookingAttempt";
+export * from "./slot";

@@ -4,11 +4,23 @@ import { pool, query, queryOne } from "./client";
 
 const DEV_PASSWORD = "nextvisit123";
 
+type AvailabilityWindow = {
+  weekday: number;
+  startTime: string;
+  endTime: string;
+};
+
 type SpecialtySeed = {
   name: string;
   types: { name: string; durationMinutes: number }[];
-  doctors: { firstName: string; lastName: string }[];
+  doctors: { firstName: string; lastName: string; availability: AvailabilityWindow[] }[];
 };
+
+const WEEKDAYS = [1, 2, 3, 4, 5];
+
+function weeklyAvailability(startTime: string, endTime: string): AvailabilityWindow[] {
+  return WEEKDAYS.map((weekday) => ({ weekday, startTime, endTime }));
+}
 
 const SPECIALTIES: SpecialtySeed[] = [
   {
@@ -19,8 +31,8 @@ const SPECIALTIES: SpecialtySeed[] = [
       { name: "Echocardiogram", durationMinutes: 45 },
     ],
     doctors: [
-      { firstName: "María", lastName: "González" },
-      { firstName: "Jorge", lastName: "Fernández" },
+      { firstName: "María", lastName: "González", availability: weeklyAvailability("09:00", "13:00") },
+      { firstName: "Jorge", lastName: "Fernández", availability: weeklyAvailability("14:00", "18:00") },
     ],
   },
   {
@@ -29,7 +41,7 @@ const SPECIALTIES: SpecialtySeed[] = [
       { name: "Dermatology consultation", durationMinutes: 30 },
       { name: "Mole check", durationMinutes: 20 },
     ],
-    doctors: [{ firstName: "Lucía", lastName: "Rodríguez" }],
+    doctors: [{ firstName: "Lucía", lastName: "Rodríguez", availability: weeklyAvailability("09:00", "13:00") }],
   },
   {
     name: "Traumatology",
@@ -38,8 +50,8 @@ const SPECIALTIES: SpecialtySeed[] = [
       { name: "Kinesiology", durationMinutes: 40 },
     ],
     doctors: [
-      { firstName: "Carlos", lastName: "Martínez" },
-      { firstName: "Ana", lastName: "López" },
+      { firstName: "Carlos", lastName: "Martínez", availability: weeklyAvailability("08:00", "12:00") },
+      { firstName: "Ana", lastName: "López", availability: weeklyAvailability("14:00", "18:00") },
     ],
   },
   {
@@ -48,7 +60,7 @@ const SPECIALTIES: SpecialtySeed[] = [
       { name: "Pediatrics consultation", durationMinutes: 30 },
       { name: "Well-child check", durationMinutes: 20 },
     ],
-    doctors: [{ firstName: "Sofía", lastName: "Pérez" }],
+    doctors: [{ firstName: "Sofía", lastName: "Pérez", availability: weeklyAvailability("09:00", "13:00") }],
   },
 ];
 
@@ -161,6 +173,12 @@ async function seed(): Promise<void> {
     const doctorIds: string[] = [];
     for (const doctor of specialty.doctors) {
       const doctorId = await upsertDoctor(specialtyId, doctor.firstName, doctor.lastName);
+      for (const window of doctor.availability) {
+        await pool.query(
+          "INSERT INTO availabilities (doctor_id, weekday, start_time, end_time) VALUES ($1, $2, $3, $4)",
+          [doctorId, window.weekday, window.startTime, window.endTime]
+        );
+      }
       doctorIds.push(doctorId);
     }
     doctorIdsBySpecialty[specialty.name] = doctorIds;
