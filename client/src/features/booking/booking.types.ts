@@ -1,0 +1,1 @@
+export type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";

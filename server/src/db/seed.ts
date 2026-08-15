@@ -12,11 +12,11 @@ type SpecialtySeed = {
 
 const SPECIALTIES: SpecialtySeed[] = [
   {
-    name: "Cardiología",
+    name: "Cardiology",
     types: [
-      { name: "Consulta cardiológica", durationMinutes: 30 },
-      { name: "Electrocardiograma", durationMinutes: 20 },
-      { name: "Ecocardiograma", durationMinutes: 45 },
+      { name: "Cardiology consultation", durationMinutes: 30 },
+      { name: "Electrocardiogram", durationMinutes: 20 },
+      { name: "Echocardiogram", durationMinutes: 45 },
     ],
     doctors: [
       { firstName: "María", lastName: "González" },
@@ -24,18 +24,18 @@ const SPECIALTIES: SpecialtySeed[] = [
     ],
   },
   {
-    name: "Dermatología",
+    name: "Dermatology",
     types: [
-      { name: "Consulta dermatológica", durationMinutes: 30 },
-      { name: "Control de lunares", durationMinutes: 20 },
+      { name: "Dermatology consultation", durationMinutes: 30 },
+      { name: "Mole check", durationMinutes: 20 },
     ],
     doctors: [{ firstName: "Lucía", lastName: "Rodríguez" }],
   },
   {
-    name: "Traumatología",
+    name: "Traumatology",
     types: [
-      { name: "Consulta traumatológica", durationMinutes: 30 },
-      { name: "Kinesiología", durationMinutes: 40 },
+      { name: "Traumatology consultation", durationMinutes: 30 },
+      { name: "Kinesiology", durationMinutes: 40 },
     ],
     doctors: [
       { firstName: "Carlos", lastName: "Martínez" },
@@ -43,10 +43,10 @@ const SPECIALTIES: SpecialtySeed[] = [
     ],
   },
   {
-    name: "Pediatría",
+    name: "Pediatrics",
     types: [
-      { name: "Consulta pediátrica", durationMinutes: 30 },
-      { name: "Control de niño sano", durationMinutes: 20 },
+      { name: "Pediatrics consultation", durationMinutes: 30 },
+      { name: "Well-child check", durationMinutes: 20 },
     ],
     doctors: [{ firstName: "Sofía", lastName: "Pérez" }],
   },
@@ -139,6 +139,14 @@ async function upsertUser(email: string, role: UserRole, doctorId?: string): Pro
 }
 
 async function seed(): Promise<void> {
+  // Authoritative seed: reset everything the seed owns so the catalog always
+  // matches SPECIALTIES exactly (upserts alone would leave stale rows behind).
+  await pool.query(
+    `TRUNCATE one_time_links, booking_attempts, appointments, patients, availabilities,
+     availability_blocks, users, doctor_appointment_types, appointment_types, doctors,
+     health_insurances, specialties RESTART IDENTITY CASCADE`
+  );
+
   const specialtyIds: Record<string, string> = {};
   const doctorIdsBySpecialty: Record<string, string[]> = {};
 
