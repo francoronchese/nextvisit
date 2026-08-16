@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import request from "supertest";
+import { clinicLocalToUtc } from "@nextvisit/shared";
 import { getTestDatabaseUrl } from "../../config/env";
 import { runMigrations } from "../../src/db/migrate";
 import app from "../../src/index";
-import { clinicLocalToUtc } from "../../src/utils/clinicTimezone";
 import {
   insertAppointment,
   insertAvailability,
@@ -24,7 +24,7 @@ async function seedSlots(): Promise<{ doctorId: string; typeId: string }> {
   await insertBlock(pool, fixture.doctorId, MONDAY);
   await insertAppointment(pool, {
     ...fixture,
-    startsAt: clinicLocalToUtc(MONDAY, "11:00").toISOString(),
+    startsAt: clinicLocalToUtc({ date: MONDAY, time: "11:00" }).toISOString(),
   });
   return { doctorId: fixture.doctorId, typeId: fixture.typeId };
 }

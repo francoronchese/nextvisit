@@ -1,21 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Appointment, HealthInsurance, OneTimeLink, Patient, Slot } from "@nextvisit/shared";
-import type { BookingNotifier } from "../../src/utils/email";
 import {
   BOOKING_ATTEMPT_WINDOW_MS,
   createBookingService,
   enforceBookingRateLimit,
   MAX_ACTIVE_APPOINTMENTS,
   MAX_BOOKING_ATTEMPTS,
-  type BookingService,
   type BookAppointmentInput,
+  type BookingServiceCore,
 } from "../../src/services/bookings";
 import type { SlotsService } from "../../src/services/slots";
 import type { BookingQueries, PatientInput } from "../../src/db/queries/bookings";
-import { BookingRateLimitedError } from "../../src/utils/bookingRateLimitedError";
-import { NotFoundError } from "../../src/utils/notFoundError";
-import { SlotUnavailableError } from "../../src/utils/slotUnavailableError";
-import { TooManyAppointmentsError } from "../../src/utils/tooManyAppointmentsError";
 
 const DNI = "30111222";
 const doctorId = "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16";
@@ -89,12 +84,6 @@ function buildAvailability(): SlotsService {
   };
 }
 
-function buildNotifier(): BookingNotifier & { sendConfirmationEmail: ReturnType<typeof vi.fn> } {
-  return {
-    sendConfirmationEmail: vi.fn(() => Promise.resolve()),
-  };
-}
-
 function buildQueries(overrides: Partial<BookingQueries> = {}): BookingQueries {
   return {
     lockPatient: vi.fn(() => Promise.resolve()),
@@ -119,10 +108,9 @@ function buildQueries(overrides: Partial<BookingQueries> = {}): BookingQueries {
 
 function buildService(
   queries: BookingQueries,
-  notifier: BookingNotifier,
   availability: SlotsService = buildAvailability()
-): BookingService {
-  return createBookingService({ queries, availability, notifier });
+): BookingServiceCore {
+  return createBookingService({ queries, availability });
 }
 
 const NOW = new Date("2026-09-07T08:00:00.000Z");
@@ -130,12 +118,11 @@ const NOW = new Date("2026-09-07T08:00:00.000Z");
 describe("booking service", () => {
   it("books an appointment for a new patient, creating patient, appointment and one-time link", async () => {
     const queries = buildQueries();
-    const notifier = buildNotifier();
-    const service = buildService(queries, notifier);
+    const service = buildService(queries);
 
-    const result = await service.book(bookingInput, { now: NOW });
+    const outcome = await service.book(bookingInput, { now: NOW });
 
-    expect(result).toEqual({ patient: { id: existingPatient.id, ...patientInput }, appointment });
+    expect(outcome.result).toEqual({ patient: { id: existingPatient.id, ...patientInput }, appointment });
 
     expect(queries.lockPatient).toHaveBeenCalledWith(DNI);
     expect(queries.createPatient).toHaveBeenCalledWith(patientInput);
@@ -158,7 +145,7 @@ describe("booking service", () => {
 
   it("takes the per-DNI lock before counting active appointments so the cap can't race", async () => {
     const queries = buildQueries();
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
     await service.book(bookingInput, { now: NOW });
 
@@ -175,9 +162,7 @@ describe("booking service", () => {
       countRecentBookingAttempts: vi.fn(() => Promise.resolve(MAX_BOOKING_ATTEMPTS + 1)),
     });
 
-    await expect(enforceBookingRateLimit(queries, DNI, NOW)).rejects.toBeInstanceOf(
-      BookingRateLimitedError
-    );
+    await expect(enforceBookingRateLimit(queries, DNI, NOW)).rejects.toMatchObject({ status: 429 });
     expect(queries.recordBookingAttempt).toHaveBeenCalledWith(DNI);
     expect(queries.countRecentBookingAttempts).toHaveBeenCalledWith(
       DNI,
@@ -197,7 +182,7 @@ describe("booking service", () => {
     const queries = buildQueries({
       getPatientByDni: vi.fn(() => Promise.resolve(existingPatient)),
     });
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
     await service.book(bookingInput, { now: NOW });
 
@@ -211,28 +196,24 @@ describe("booking service", () => {
     });
   });
 
-  it("sends a confirmation email with the one-time link to the patient", async () => {
-    const notifier = buildNotifier();
-    const service = buildService(buildQueries(), notifier);
+  it("produces a confirmation email payload with the one-time link for the patient", async () => {
+    const service = buildService(buildQueries());
 
-    await service.book(bookingInput, { now: NOW });
+    const { confirmationEmail } = await service.book(bookingInput, { now: NOW });
 
-    expect(notifier.sendConfirmationEmail).toHaveBeenCalledTimes(1);
-    const call = notifier.sendConfirmationEmail.mock.calls[0]![0];
-    expect(call.to).toBe(patientInput.email);
-    expect(call.patient).toEqual({ id: existingPatient.id, ...patientInput });
-    expect(call.oneTimeLinkUrl).toContain("/appointments/");
+    expect(confirmationEmail.to).toBe(patientInput.email);
+    expect(confirmationEmail.patient).toEqual({ id: existingPatient.id, ...patientInput });
+    expect(confirmationEmail.appointment).toEqual(appointment);
+    expect(confirmationEmail.oneTimeLinkUrl).toContain("/appointments/");
   });
 
   it("rejects a booking once the patient already has 3 active future appointments", async () => {
     const queries = buildQueries({
       countActiveAppointmentsForDni: vi.fn(() => Promise.resolve(MAX_ACTIVE_APPOINTMENTS)),
     });
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
-    await expect(service.book(bookingInput, { now: NOW })).rejects.toBeInstanceOf(
-      TooManyAppointmentsError
-    );
+    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 422 });
     expect(queries.createAppointment).not.toHaveBeenCalled();
   });
 
@@ -240,7 +221,7 @@ describe("booking service", () => {
     const queries = buildQueries({
       countActiveAppointmentsForDni: vi.fn(() => Promise.resolve(2)),
     });
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
     await expect(service.book(bookingInput, { now: NOW })).resolves.toBeDefined();
   });
@@ -251,11 +232,9 @@ describe("booking service", () => {
       getSlotsForDoctor: vi.fn(() => Promise.resolve([availableSlot])),
       getAvailableSlot: vi.fn(() => Promise.resolve(undefined)),
     };
-    const service = buildService(queries, buildNotifier(), availability);
+    const service = buildService(queries, availability);
 
-    await expect(service.book(bookingInput, { now: NOW })).rejects.toBeInstanceOf(
-      SlotUnavailableError
-    );
+    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 409 });
     expect(queries.createAppointment).not.toHaveBeenCalled();
   });
 
@@ -264,17 +243,15 @@ describe("booking service", () => {
       createAppointment: vi.fn(() =>
         Promise.reject(
           Object.assign(
-            new Error("duplicate key value violates unique constraint appointments_doctor_starts_at_active_idx"),
-            { code: "23505" }
+            new Error("conflicting key value violates exclusion constraint"),
+            { code: "23P01" }
           )
         )
       ),
     });
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
-    await expect(service.book(bookingInput, { now: NOW })).rejects.toBeInstanceOf(
-      SlotUnavailableError
-    );
+    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 409 });
     expect(queries.createOneTimeLink).not.toHaveBeenCalled();
   });
 
@@ -282,10 +259,8 @@ describe("booking service", () => {
     const queries = buildQueries({
       getHealthInsuranceById: vi.fn(() => Promise.resolve(undefined)),
     });
-    const service = buildService(queries, buildNotifier());
+    const service = buildService(queries);
 
-    await expect(service.book(bookingInput, { now: NOW })).rejects.toBeInstanceOf(
-      NotFoundError
-    );
+    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 404 });
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "../../../services/apiClient";
+import { apiGet } from "../services/apiClient";
 
 export type ResourceState<T> = {
   data: T | undefined;

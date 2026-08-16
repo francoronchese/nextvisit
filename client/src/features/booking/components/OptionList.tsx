@@ -10,7 +10,7 @@ type OptionListProps<T> = {
   onRetry: () => void;
 };
 
-import { LoadState } from "./LoadState";
+import { LoadState } from "../../../components/LoadState";
 
 export function OptionList<T>({
   options,

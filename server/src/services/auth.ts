@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { User } from "@nextvisit/shared";
 import type { StaffUserRow } from "../db/queries/users";
 import { getUserByEmail, getUserById, toPublicUser } from "../db/queries/users";
-import { InvalidCredentialsError } from "../utils/invalidCredentialsError";
+import { invalidCredentialsError } from "../utils/httpErrors";
 import { signSessionToken, verifySessionToken } from "../utils/sessionToken";
 
 export type AuthQueries = {
@@ -42,7 +42,7 @@ export function createAuthService(queries: AuthQueries): AuthService {
       const staff = await queries.getUserByEmail(normalizedEmail);
       const passwordMatches = await compareAgainstKnownHash(password, staff?.passwordHash);
       if (!staff || !passwordMatches) {
-        throw new InvalidCredentialsError();
+        throw invalidCredentialsError();
       }
       return {
         token: signSessionToken(staff.id, staff.role),

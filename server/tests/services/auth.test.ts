@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { User } from "@nextvisit/shared";
 import type { StaffUserRow } from "../../src/db/queries/users";
 import { createAuthService, type AuthQueries } from "../../src/services/auth";
-import { InvalidCredentialsError } from "../../src/utils/invalidCredentialsError";
 
 const PASSWORD = "secret123";
 
@@ -42,16 +41,16 @@ describe("auth service", () => {
 
   it("rejects an unknown email", async () => {
     const service = createAuthService(buildFakeQueries());
-    await expect(service.login("nobody@nextvisit.ar", PASSWORD)).rejects.toBeInstanceOf(
-      InvalidCredentialsError
-    );
+    await expect(service.login("nobody@nextvisit.ar", PASSWORD)).rejects.toMatchObject({
+      status: 401,
+    });
   });
 
   it("rejects a wrong password", async () => {
     const service = createAuthService(buildFakeQueries());
-    await expect(service.login(staffRow.email, "wrong-password")).rejects.toBeInstanceOf(
-      InvalidCredentialsError
-    );
+    await expect(service.login(staffRow.email, "wrong-password")).rejects.toMatchObject({
+      status: 401,
+    });
   });
 
   it("never reveals whether the email or the password was wrong", async () => {

@@ -72,26 +72,14 @@ describe("admin auth API", () => {
     expect(res.body).toEqual({ error: "invalid body" });
   });
 
-  it("GET /api/admin/me with a valid token returns the logged-in user", async () => {
-    const login = await request(app)
-      .post("/api/admin/login")
-      .send({ email: CREDENTIALS.email, password: CREDENTIALS.password })
-      .expect(200);
-    const res = await request(app)
-      .get("/api/admin/me")
-      .set("Authorization", `Bearer ${login.body.token}`)
-      .expect(200);
-    expect(res.body).toEqual(login.body.user);
-  });
-
-  it("GET /api/admin/me without a token returns 401", async () => {
-    const res = await request(app).get("/api/admin/me").expect(401);
+  it("GET /api/admin/* without a token returns 401", async () => {
+    const res = await request(app).get("/api/admin/anything").expect(401);
     expect(res.body).toEqual({ error: "unauthorized" });
   });
 
-  it("GET /api/admin/me with an invalid token returns 401", async () => {
+  it("GET /api/admin/* with an invalid token returns 401", async () => {
     const res = await request(app)
-      .get("/api/admin/me")
+      .get("/api/admin/anything")
       .set("Authorization", "Bearer not-a-valid-token")
       .expect(401);
     expect(res.body).toEqual({ error: "unauthorized" });

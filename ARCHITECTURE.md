@@ -81,6 +81,8 @@ Ask: does this schema describe a **domain entity**, or a **single endpoint's pay
 
 When in doubt: if renaming the schema to match a noun in the database (Patient, not BookPayload) still makes sense, it's domain → shared. If the schema's name matches an action/endpoint (Book, Login, Reschedule), it's request-shaped → server.
 
+**Carve-out — response composites.** A response body that assembles several domain entities and that the client consumes as one unit (e.g. `AppointmentDetail` = appointment + patient + doctor + specialty + appointmentType, or `BookingResponse` = patient + appointment) lives in `shared/src/types/` alongside the domain schemas it is built from. It is still a noun, still needs to be identical on both sides, and it is *composed of* domain schemas rather than duplicating their fields. Keep the *request* side (bookAppointment, reschedule, login) in `server/src/validators/`.
+
 ### 1.3. Rule: `server/db/schema.sql` vs `shared/types` — two different kinds of "schema"
 
 These names collide but are NOT the same thing:

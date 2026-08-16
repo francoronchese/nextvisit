@@ -1,14 +1,11 @@
 import { randomBytes } from "node:crypto";
-import type { BookingResponse } from "@nextvisit/shared";
+import type { BookingResponse, ClinicLocalTime } from "@nextvisit/shared";
 import { query, queryOne, withTransaction } from "../db/client";
 import { createBookingQueries, type BookingQueries } from "../db/queries/bookings";
-import type { BookingNotifier } from "../utils/email";
-import { buildOneTimeLinkUrl, resendNotifier } from "../utils/email";
-import { clinicLocalToUtc } from "../utils/clinicTimezone";
-import { BookingRateLimitedError } from "../utils/bookingRateLimitedError";
-import { NotFoundError } from "../utils/notFoundError";
-import { SlotUnavailableError } from "../utils/slotUnavailableError";
-import { TooManyAppointmentsError } from "../utils/tooManyAppointmentsError";
+import { buildOneTimeLinkUrl, resendNotifier, type ConfirmationEmailInput } from "../utils/email";
+import { clinicLocalToUtc } from "@nextvisit/shared";
+import { bookingRateLimitedError, notFoundError, slotUnavailableError, tooManyAppointmentsError } from "../utils/httpErrors";
+import { isConstraintViolation } from "../utils/isConstraintViolation";
 import { slotsService, type SlotsService } from "./slots";
 
 export const MAX_ACTIVE_APPOINTMENTS = 3;
@@ -30,6 +27,18 @@ export type BookAppointmentInput = {
 
 export type BookingResult = BookingResponse;
 
+// The core service produces the outcome plus the email it implies; the caller
+// (the pool wrapper) sends the email only after the transaction commits so a
+// Resend call never holds the booking transaction open.
+export type BookingOutcome = {
+  result: BookingResult;
+  confirmationEmail: ConfirmationEmailInput;
+};
+
+export type BookingServiceCore = {
+  book(input: BookAppointmentInput, options?: { now?: Date }): Promise<BookingOutcome>;
+};
+
 export type BookingService = {
   book(input: BookAppointmentInput, options?: { now?: Date }): Promise<BookingResult>;
 };
@@ -37,16 +46,7 @@ export type BookingService = {
 export type BookingServiceDeps = {
   queries: BookingQueries;
   availability: SlotsService;
-  notifier: BookingNotifier;
 };
-
-function isUniqueViolation(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const code = (error as { code?: unknown }).code;
-  if (code === "23505") return true;
-  const message = (error as { message?: unknown }).message;
-  return typeof message === "string" && /duplicate key/.test(message);
-}
 
 // Rate limiting is deliberately outside the booking transaction: a rejected or
 // failed attempt must still be recorded, so it runs on the pool before the tx
@@ -60,40 +60,37 @@ export async function enforceBookingRateLimit(
   const since = new Date(now.getTime() - BOOKING_ATTEMPT_WINDOW_MS).toISOString();
   const attempts = await queries.countRecentBookingAttempts(dni, since);
   if (attempts > MAX_BOOKING_ATTEMPTS) {
-    throw new BookingRateLimitedError();
+    throw bookingRateLimitedError();
   }
 }
 
-export function createBookingService(deps: BookingServiceDeps): BookingService {
-  const { queries, availability, notifier } = deps;
+export function createBookingService(deps: BookingServiceDeps): BookingServiceCore {
+  const { queries, availability } = deps;
   return {
     async book(input, options) {
       const now = options?.now ?? new Date();
+      const slot = { date: input.date, time: input.startTime } satisfies ClinicLocalTime;
 
       // Per-DNI serialization first (spec: cap enforced inside the booking
       // transaction): concurrent bookings for the same DNI queue here, so the
       // patient upsert and the cap count below never race each other.
       await queries.lockPatient(input.dni);
 
-      const available = await availability.getAvailableSlot(
-        input.doctorId,
-        input.typeId,
-        input.date,
-        input.startTime,
-        now
-      );
+      // Fast path over committed data; the DB constraint below is the authority
+      // under concurrency, so this check may legitimately go stale.
+      const available = await availability.getAvailableSlot(input.doctorId, input.typeId, slot, now);
       if (!available) {
-        throw new SlotUnavailableError();
+        throw slotUnavailableError();
       }
 
       const insurance = await queries.getHealthInsuranceById(input.healthInsuranceId);
       if (!insurance) {
-        throw new NotFoundError("health insurance");
+        throw notFoundError("health insurance");
       }
 
       const activeCount = await queries.countActiveAppointmentsForDni(input.dni);
       if (activeCount >= MAX_ACTIVE_APPOINTMENTS) {
-        throw new TooManyAppointmentsError();
+        throw tooManyAppointmentsError();
       }
 
       const patientFields = {
@@ -108,7 +105,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
         ? await queries.updatePatient(existing.id, patientFields)
         : await queries.createPatient({ ...patientFields, dni: input.dni });
 
-      const startsAt = clinicLocalToUtc(input.date, input.startTime).toISOString();
+      const startsAt = clinicLocalToUtc(slot).toISOString();
       let appointment;
       try {
         appointment = await queries.createAppointment({
@@ -121,10 +118,10 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
           copayAmount: insurance.copayAmount,
         });
       } catch (error) {
-        // Two patients grabbing the same slot: the DB unique constraint on
-        // (doctor_id, starts_at) rejects the second booking even under concurrency.
-        if (isUniqueViolation(error)) {
-          throw new SlotUnavailableError();
+        // Two patients grabbing the same (or an overlapping) slot: the DB
+        // constraints reject the second booking even under concurrency.
+        if (isConstraintViolation(error)) {
+          throw slotUnavailableError();
         }
         throw error;
       }
@@ -136,19 +133,15 @@ export function createBookingService(deps: BookingServiceDeps): BookingService {
         expiresAt: startsAt,
       });
 
-      // Email is best-effort: a transient Resend failure must not lose the booking.
-      await notifier
-        .sendConfirmationEmail({
+      return {
+        result: { patient, appointment },
+        confirmationEmail: {
           to: patient.email ?? "",
           patient,
           appointment,
           oneTimeLinkUrl: buildOneTimeLinkUrl(token),
-        })
-        .catch((error: unknown) => {
-          console.error("failed to send confirmation email:", error);
-        });
-
-      return { patient, appointment };
+        },
+      };
     },
   };
 }
@@ -159,13 +152,21 @@ export const bookingService: BookingService = {
   async book(input, options) {
     const now = options?.now ?? new Date();
     await enforceBookingRateLimit(poolBookingQueries, input.dni, now);
-    return withTransaction(async (tx) => {
+    const outcome = await withTransaction(async (tx) => {
       const queries = createBookingQueries(tx);
       return createBookingService({
         queries,
         availability: slotsService,
-        notifier: resendNotifier,
       }).book(input, options);
     });
+
+    // Email is best-effort: a transient Resend failure must not lose the booking.
+    await resendNotifier
+      .sendConfirmationEmail(outcome.confirmationEmail)
+      .catch((error: unknown) => {
+        console.error("failed to send confirmation email:", error);
+      });
+
+    return outcome.result;
   },
 };

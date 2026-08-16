@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMe, login } from "../controllers/auth";
+import { login } from "../controllers/auth";
 import { requireAdminAuth } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -9,5 +9,3 @@ export const adminRouter = Router();
 adminRouter.post("/admin/login", asyncHandler(login));
 
 adminRouter.use(requireAdminAuth);
-
-adminRouter.get("/admin/me", asyncHandler(getMe));

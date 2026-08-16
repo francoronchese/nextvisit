@@ -7,6 +7,8 @@
 -- Enums
 -- ============================================================================
 
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 CREATE TYPE booking_channel AS ENUM ('web', 'front_desk', 'phone');
 CREATE TYPE appointment_status AS ENUM ('scheduled', 'cancelled', 'ended');
 CREATE TYPE attendance AS ENUM ('pending', 'attended', 'no_show');
@@ -110,12 +112,27 @@ CREATE TABLE appointments (
   )
 );
 
--- Prevents double-booking the same doctor at the same start time, even under
--- concurrency (see spec: unique constraint on doctor + starts_at). Cancelled
--- appointments are excluded so their slot frees up for re-booking.
-CREATE UNIQUE INDEX appointments_doctor_starts_at_active_idx
-  ON appointments (doctor_id, starts_at)
-  WHERE status <> 'cancelled';
+-- Prevents double-booking the same doctor, even under concurrency (spec: never
+-- double-booked even under concurrency): the exclusion constraint rejects any
+-- two scheduled appointments whose times overlap, not just identical starts.
+-- Cancelled appointments are excluded so their slot frees up for re-booking.
+--
+-- tstzrange and timestamptz + interval are STABLE (DST-dependent), so Postgres
+-- refuses them in an index expression directly; the IMMUTABLE wrapper makes
+-- the span usable as the exclusion key. Safe here: the clinic timezone has no
+-- DST.
+CREATE FUNCTION appointments_span(starts_at timestamptz, duration_minutes integer)
+RETURNS tstzrange
+LANGUAGE sql IMMUTABLE
+AS $$ SELECT tstzrange(starts_at, starts_at + make_interval(mins => duration_minutes), '[)') $$;
+
+ALTER TABLE appointments
+  ADD CONSTRAINT appointments_no_overlap_excl
+  EXCLUDE USING gist (
+    doctor_id WITH =,
+    appointments_span(starts_at, duration_minutes) WITH &&
+  )
+  WHERE (status <> 'cancelled');
 
 CREATE INDEX appointments_patient_id_idx ON appointments (patient_id);
 CREATE INDEX appointments_status_idx ON appointments (status);

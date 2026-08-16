@@ -1,4 +1,5 @@
-import { parseDateParts, parseTimeParts } from "@nextvisit/shared";
+import type { ClinicLocalTime } from "./dateTime";
+import { parseDateParts, parseTimeParts } from "./dateTime";
 
 export const CLINIC_TIMEZONE = "America/Argentina/Buenos_Aires";
 
@@ -29,15 +30,15 @@ function getOffsetMs(instant: Date): number {
   return asUtc - instant.getTime();
 }
 
-export function clinicLocalToUtc(date: string, time: string): Date {
-  const { year, month, day } = parseDateParts(date);
-  const { hour, minute } = parseTimeParts(time);
+export function clinicLocalToUtc(local: ClinicLocalTime): Date {
+  const { year, month, day } = parseDateParts(local.date);
+  const { hour, minute } = parseTimeParts(local.time);
   const naive = new Date(Date.UTC(year, month - 1, day, hour, minute));
   const offset = getOffsetMs(naive);
   return new Date(naive.getTime() - offset);
 }
 
-export function utcToClinicParts(instant: Date): { date: string; time: string } {
+export function utcToClinicParts(instant: Date): ClinicLocalTime {
   return {
     date: `${clinicPart(instant, "year")}-${clinicPart(instant, "month")}-${clinicPart(instant, "day")}`,
     time: `${clinicPart(instant, "hour")}:${clinicPart(instant, "minute")}`,

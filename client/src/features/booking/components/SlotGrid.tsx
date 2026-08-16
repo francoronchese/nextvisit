@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { parseDateParts } from "@nextvisit/shared";
+import { formatDateShort } from "@nextvisit/shared";
 import type { Slot } from "../booking.types";
-import { LoadState } from "./LoadState";
+import { LoadState } from "../../../components/LoadState";
 
 type SlotGridProps = {
   slots: Slot[];
@@ -22,16 +22,6 @@ function groupByDate(slots: Slot[]): { date: string; slots: Slot[] }[] {
   return [...byDate.entries()].map(([date, daySlots]) => ({ date, slots: daySlots }));
 }
 
-function formatDate(date: string): string {
-  const { year, month, day } = parseDateParts(date);
-  const parts = new Date(year, month - 1, day).toLocaleDateString("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  return parts.charAt(0).toUpperCase() + parts.slice(1);
-}
-
 export function SlotGrid({ slots, loading, error, selectedSlot, onSelect, onRetry }: SlotGridProps) {
   const days = useMemo(() => groupByDate(slots), [slots]);
 
@@ -48,11 +38,12 @@ export function SlotGrid({ slots, loading, error, selectedSlot, onSelect, onRetr
       ) : (
         <div className="grid gap-6">
           {days.map((day) => {
+            const label = formatDateShort(day.date);
             const isSelected = (slot: Slot) =>
               selectedSlot?.date === slot.date && selectedSlot?.startTime === slot.startTime;
             return (
-              <section key={day.date} aria-label={formatDate(day.date)}>
-                <h3 className="mb-3 text-lg font-semibold text-gray-900">{formatDate(day.date)}</h3>
+              <section key={day.date} aria-label={label}>
+                <h3 className="mb-3 text-lg font-semibold text-gray-900">{label}</h3>
                 <div className="grid grid-cols-4 gap-2">
                   {day.slots.map((slot) => (
                     <button

@@ -10,6 +10,7 @@ export * from "./healthInsurance";
 export * from "./patient";
 export * from "./appointment";
 export * from "./oneTimeLink";
+export * from "./appointmentDetail";
 export * from "./bookingResponse";
 export * from "./user";
 export * from "./bookingAttempt";

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ErrorBanner } from "../../../components/ErrorBanner";
 import type { AppointmentType, Doctor, PatientFormData, Slot, Specialty } from "../booking.types";
 import { useAppointmentTypes, useDoctorsForType, useSpecialties } from "../hooks/useCatalog";
 import { useBooking } from "../hooks/useBooking";
@@ -226,14 +227,10 @@ export function BookingFlow() {
             onRetry={slots.retry}
           />
           {booking.slotUnavailable && (
-            <div role="alert" className="mt-6 rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-lg text-red-800">
-              {booking.error} Please pick another time.
-            </div>
+            <ErrorBanner>{`${booking.error} Please pick another time.`}</ErrorBanner>
           )}
           {!booking.slotUnavailable && booking.error && (
-            <div role="alert" className="mt-6 rounded-2xl border-2 border-red-200 bg-red-50 p-4 text-lg text-red-800">
-              {booking.error}
-            </div>
+            <ErrorBanner>{booking.error}</ErrorBanner>
           )}
           {selections.slot && (
             <div className="mt-6">

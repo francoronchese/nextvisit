@@ -1,35 +1,15 @@
 import type { AppointmentType, Availability, AvailabilityBlock, Doctor, Slot } from "@nextvisit/shared";
-import { parseDateParts } from "@nextvisit/shared";
+import { parseDateParts, type ClinicLocalTime } from "@nextvisit/shared";
+import { clinicLocalToUtc, utcToClinicParts } from "@nextvisit/shared";
 import { getAppointmentTypeById } from "../db/queries/catalog";
-import {
-  getDoctorById,
-  getDoctorOffersType,
-  listAvailabilityBlocksForDoctor,
-  listAvailabilityForDoctor,
-  listBookedAppointmentsForDoctor,
-  type BookedAppointment,
-} from "../db/queries/slots";
-import { clinicLocalToUtc, utcToClinicParts } from "../utils/clinicTimezone";
-import { NotFoundError } from "../utils/notFoundError";
+import { slotQueries, type BookedAppointment, type SlotQueries } from "../db/queries/slots";
+import { notFoundError } from "../utils/httpErrors";
 import { timeToMinutes } from "../utils/time";
 
-export type { BookedAppointment };
+export type { BookedAppointment, SlotQueries };
 
-export type SlotQueries = {
-  getDoctorById(id: string): Promise<Doctor | undefined>;
+export type SlotSource = SlotQueries & {
   getAppointmentTypeById(id: string): Promise<AppointmentType | undefined>;
-  getDoctorOffersType(doctorId: string, typeId: string): Promise<boolean>;
-  listAvailabilityForDoctor(doctorId: string): Promise<Availability[]>;
-  listAvailabilityBlocksForDoctor(
-    doctorId: string,
-    fromDate: string,
-    toDate: string
-  ): Promise<AvailabilityBlock[]>;
-  listBookedAppointmentsForDoctor(
-    doctorId: string,
-    fromInstant: Date,
-    toInstant: Date
-  ): Promise<BookedAppointment[]>;
 };
 
 export type AvailableSlot = {
@@ -47,8 +27,7 @@ export type SlotsService = {
   getAvailableSlot(
     doctorId: string,
     typeId: string,
-    date: string,
-    startTime: string,
+    local: ClinicLocalTime,
     now: Date
   ): Promise<AvailableSlot | undefined>;
 };
@@ -99,7 +78,7 @@ function computeSlots(args: {
       for (let startMin = windowStart; startMin + durationMinutes <= windowEnd; startMin += durationMinutes) {
         const startTime = fromMinutes(startMin);
         const endTime = fromMinutes(startMin + durationMinutes);
-        const startUtc = clinicLocalToUtc(date, startTime);
+        const startUtc = clinicLocalToUtc({ date, time: startTime });
         if (startUtc.getTime() <= nowMs) {
           continue;
         }
@@ -129,7 +108,7 @@ function computeSlots(args: {
   return slots;
 }
 
-export function createSlotsService(queries: SlotQueries): SlotsService {
+export function createSlotsService(queries: SlotSource): SlotsService {
   const getSlotsForDoctor = async (
     doctorId: string,
     typeId: string,
@@ -141,20 +120,20 @@ export function createSlotsService(queries: SlotQueries): SlotsService {
 
     const doctor = await queries.getDoctorById(doctorId);
     if (!doctor) {
-      throw new NotFoundError("doctor");
+      throw notFoundError("doctor");
     }
     const type = await queries.getAppointmentTypeById(typeId);
     if (!type) {
-      throw new NotFoundError("appointment type");
+      throw notFoundError("appointment type");
     }
     const offersType = await queries.getDoctorOffersType(doctorId, typeId);
     if (!offersType) {
-      throw new NotFoundError("appointment type for this doctor");
+      throw notFoundError("appointment type for this doctor");
     }
 
     const lastDate = addDays(startDate, rangeDays - 1);
-    const fromInstant = clinicLocalToUtc(addDays(startDate, -1), "00:00");
-    const toInstant = clinicLocalToUtc(addDays(lastDate, 2), "00:00");
+    const fromInstant = clinicLocalToUtc({ date: addDays(startDate, -1), time: "00:00" });
+    const toInstant = clinicLocalToUtc({ date: addDays(lastDate, 2), time: "00:00" });
 
     const [availability, blocks, booked] = await Promise.all([
       queries.listAvailabilityForDoctor(doctorId),
@@ -175,9 +154,9 @@ export function createSlotsService(queries: SlotQueries): SlotsService {
 
   return {
     getSlotsForDoctor,
-    async getAvailableSlot(doctorId, typeId, date, startTime, now) {
-      const slots = await getSlotsForDoctor(doctorId, typeId, date, { rangeDays: 1, now });
-      const slot = slots.find((s) => s.date === date && s.startTime === startTime && s.available);
+    async getAvailableSlot(doctorId, typeId, local, now) {
+      const slots = await getSlotsForDoctor(doctorId, typeId, local.date, { rangeDays: 1, now });
+      const slot = slots.find((s) => s.date === local.date && s.startTime === local.time && s.available);
       if (!slot) return undefined;
       return { slot, durationMinutes: timeToMinutes(slot.endTime) - timeToMinutes(slot.startTime) };
     },
@@ -185,10 +164,6 @@ export function createSlotsService(queries: SlotQueries): SlotsService {
 }
 
 export const slotsService = createSlotsService({
-  getDoctorById,
+  ...slotQueries,
   getAppointmentTypeById,
-  getDoctorOffersType,
-  listAvailabilityForDoctor,
-  listAvailabilityBlocksForDoctor,
-  listBookedAppointmentsForDoctor,
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppointmentType, Availability, AvailabilityBlock, Doctor, Slot } from "@nextvisit/shared";
-import { createSlotsService, type BookedAppointment, type SlotQueries } from "../../src/services/slots";
-import { NotFoundError } from "../../src/utils/notFoundError";
+import { createSlotsService, type BookedAppointment, type SlotSource } from "../../src/services/slots";
 
 const cardioId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11";
 const maria: Doctor = {
@@ -38,7 +37,7 @@ const MONDAY = "2026-08-17";
 const MONDAY_11AM_UTC = "2026-08-17T14:00:00.000Z";
 const NOW_BEFORE_RANGE = new Date("2026-08-17T08:00:00.000Z");
 
-function buildFakeQueries(overrides: Partial<SlotQueries> = {}): SlotQueries {
+function buildFakeQueries(overrides: Partial<SlotSource> = {}): SlotSource {
   return {
     getDoctorById: (id) => Promise.resolve(id === maria.id ? maria : undefined),
     getAppointmentTypeById: (id) =>
@@ -182,7 +181,7 @@ describe("slots service", () => {
     const service = createSlotsService(buildFakeQueries());
     await expect(
       service.getSlotsForDoctor("00000000-0000-0000-0000-000000000000", consulta.id, MONDAY)
-    ).rejects.toBeInstanceOf(NotFoundError);
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   it("defaults the range start to today in the clinic timezone", async () => {
@@ -200,23 +199,23 @@ describe("slots service", () => {
     const service = createSlotsService(buildFakeQueries());
     await expect(
       service.getSlotsForDoctor(maria.id, "00000000-0000-0000-0000-000000000000", MONDAY)
-    ).rejects.toBeInstanceOf(NotFoundError);
+    ).rejects.toMatchObject({ status: 404 });
   });
 
   it("rejects a doctor that does not offer the appointment type", async () => {
     const service = createSlotsService(
       buildFakeQueries({ getDoctorOffersType: () => Promise.resolve(false) })
     );
-    await expect(service.getSlotsForDoctor(maria.id, consulta.id, MONDAY)).rejects.toBeInstanceOf(
-      NotFoundError
-    );
+    await expect(service.getSlotsForDoctor(maria.id, consulta.id, MONDAY)).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it("returns a single available slot with its duration", async () => {
     const service = createSlotsService(buildFakeQueries());
 
     await expect(
-      service.getAvailableSlot(maria.id, consulta.id, MONDAY, "10:00", NOW_BEFORE_RANGE)
+      service.getAvailableSlot(maria.id, consulta.id, { date: MONDAY, time: "10:00" }, NOW_BEFORE_RANGE)
     ).resolves.toEqual({ slot: slot(MONDAY, "10:00", "10:30", true), durationMinutes: 30 });
   });
 
@@ -227,7 +226,7 @@ describe("slots service", () => {
     );
 
     await expect(
-      service.getAvailableSlot(maria.id, consulta.id, MONDAY, "11:00", NOW_BEFORE_RANGE)
+      service.getAvailableSlot(maria.id, consulta.id, { date: MONDAY, time: "11:00" }, NOW_BEFORE_RANGE)
     ).resolves.toBeUndefined();
   });
 });

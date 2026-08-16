@@ -84,7 +84,7 @@ describe("apiClient staff token injection", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: adminUser.id }));
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: adminUser.id }));
 
-    await apiGet("/api/admin/me");
+    await apiGet("/api/admin/dashboard");
     await apiGet("/api/specialties");
 
     const adminHeaders = new Headers(fetchMock.mock.calls[0]![1]?.headers);
@@ -96,7 +96,7 @@ describe("apiClient staff token injection", () => {
   it("does not inject a header when no token is stored", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: adminUser.id }));
 
-    await apiGet("/api/admin/me");
+    await apiGet("/api/admin/dashboard");
 
     const headers = new Headers(fetchMock.mock.calls[0]![1]?.headers);
     expect(headers.get("Authorization")).toBeNull();

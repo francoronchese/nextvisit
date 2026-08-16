@@ -1,3 +1,4 @@
+import { formatDateLong } from "@nextvisit/shared";
 import type { AppointmentType, Doctor, Patient, Slot, Specialty } from "../booking.types";
 
 type ConfirmationProps = {
@@ -8,16 +9,6 @@ type ConfirmationProps = {
   slot: Slot;
 };
 
-function formatDate(date: string): string {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day!).toLocaleDateString("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 export function Confirmation({ patient, specialty, type, doctor, slot }: ConfirmationProps) {
   return (
     <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-6">
@@ -27,7 +18,7 @@ export function Confirmation({ patient, specialty, type, doctor, slot }: Confirm
         {specialty.name} ({type.name})
       </p>
       <p className="mt-4 text-2xl font-semibold text-gray-900">
-        {formatDate(slot.date)} at {slot.startTime}
+        {formatDateLong(slot.date)} at {slot.startTime}
       </p>
       <p className="mt-4 text-lg text-gray-700">
         A confirmation email was sent to {patient.email}.

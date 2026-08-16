@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import type { PatientFormData } from "../booking.types";
 import { useHealthInsurances } from "../hooks/useCatalog";
-import { LoadState } from "./LoadState";
+import { LoadState } from "../../../components/LoadState";
 
 type PatientFormProps = {
   initial?: PatientFormData;

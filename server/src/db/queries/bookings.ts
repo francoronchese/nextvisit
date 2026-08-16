@@ -41,10 +41,10 @@ export type BookingQueries = {
   countRecentBookingAttempts(dni: string, since: string): Promise<number>;
 };
 
-const PATIENT_COLUMNS = `id, dni, first_name AS "firstName", last_name AS "lastName",
+export const PATIENT_COLUMNS = `id, dni, first_name AS "firstName", last_name AS "lastName",
   health_insurance_id AS "healthInsuranceId", phone, email`;
 
-const APPOINTMENT_COLUMNS = `id, patient_id AS "patientId", doctor_id AS "doctorId",
+export const APPOINTMENT_COLUMNS = `id, patient_id AS "patientId", doctor_id AS "doctorId",
   appointment_type_id AS "appointmentTypeId",
   ${utcIso("starts_at")} AS "startsAt",
   duration_minutes AS "durationMinutes",
@@ -54,7 +54,7 @@ const APPOINTMENT_COLUMNS = `id, patient_id AS "patientId", doctor_id AS "doctor
   copay_paid AS "copayPaid",
   ${utcIso("created_at")} AS "createdAt"`;
 
-const ONE_TIME_LINK_COLUMNS = `id, appointment_id AS "appointmentId", token,
+export const ONE_TIME_LINK_COLUMNS = `id, appointment_id AS "appointmentId", token,
   ${utcIso("created_at")} AS "createdAt",
   ${utcIso("expires_at")} AS "expiresAt",
   ${utcIso("used_at")} AS "usedAt"`;

@@ -1,9 +1,14 @@
 import { AdminLoginPage } from "./features/admin";
+import { AppointmentManagementPage } from "./features/appointments";
 import { BookingFlow } from "./features/booking";
 
 export default function App() {
-  if (window.location.pathname.startsWith("/admin")) {
+  const path = window.location.pathname;
+  if (path.startsWith("/admin")) {
     return <AdminLoginPage />;
+  }
+  if (path.startsWith("/appointments/")) {
+    return <AppointmentManagementPage />;
   }
   return (
     <main className="min-h-screen bg-gray-50">

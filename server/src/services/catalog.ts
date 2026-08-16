@@ -7,7 +7,7 @@ import {
   listHealthInsurances,
   listSpecialties,
 } from "../db/queries/catalog";
-import { NotFoundError } from "../utils/notFoundError";
+import { notFoundError } from "../utils/httpErrors";
 
 export type CatalogQueries = {
   listSpecialties(): Promise<Specialty[]>;
@@ -33,7 +33,7 @@ async function listChildrenOfExistingParent<T>(
 ): Promise<T[]> {
   const parent = await getParent(parentId);
   if (!parent) {
-    throw new NotFoundError(resource);
+    throw notFoundError(resource);
   }
   return listChildren(parentId);
 }
