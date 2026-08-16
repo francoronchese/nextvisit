@@ -6,7 +6,7 @@ import { parseRequest, respondDeleted, respondWithResource } from "../utils/resp
 import {
   availabilityBlockInputSchema,
   availabilityInputSchema,
-  doctorListQuerySchema,
+  doctorIdQuerySchema,
 } from "../validators/availability";
 
 export async function getDoctors(_req: Request, res: Response): Promise<void> {
@@ -16,7 +16,7 @@ export async function getDoctors(_req: Request, res: Response): Promise<void> {
 }
 
 export async function getAvailability(req: Request, res: Response): Promise<void> {
-  const query = parseRequest(doctorListQuerySchema, req.query, res, "invalid query");
+  const query = parseRequest(doctorIdQuerySchema, req.query, res, "invalid query");
   if (!query) return;
   await respondWithResource(res, () => availabilityService.listAvailabilityForDoctor(query.doctorId), {
     schema: availabilitySchema.array(),
@@ -50,7 +50,7 @@ export async function deleteAvailability(req: Request, res: Response): Promise<v
 }
 
 export async function getAvailabilityBlocks(req: Request, res: Response): Promise<void> {
-  const query = parseRequest(doctorListQuerySchema, req.query, res, "invalid query");
+  const query = parseRequest(doctorIdQuerySchema, req.query, res, "invalid query");
   if (!query) return;
   await respondWithResource(res, () => availabilityService.listBlocksForDoctor(query.doctorId), {
     schema: availabilityBlockSchema.array(),

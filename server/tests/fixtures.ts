@@ -61,7 +61,7 @@ export async function insertAvailability(pool: Pool, doctorId: string): Promise<
 
 export async function insertBlock(pool: Pool, doctorId: string, date: string): Promise<void> {
   await pool.query(
-    "INSERT INTO availability_blocks (doctor_id, date, start_time, end_time, reason) VALUES ($1, $2, '10:00', '11:00', 'Holiday')",
+    "INSERT INTO availability_blocks (doctor_id, date, start_time, end_time, reason) VALUES ($1, $2, '10:00', '11:00', 'holiday')",
     [doctorId, date]
   );
 }

@@ -13,6 +13,7 @@ CREATE TYPE booking_channel AS ENUM ('web', 'front_desk', 'phone');
 CREATE TYPE appointment_status AS ENUM ('scheduled', 'cancelled', 'ended');
 CREATE TYPE attendance AS ENUM ('pending', 'attended', 'no_show');
 CREATE TYPE user_role AS ENUM ('admin', 'secretary', 'doctor');
+CREATE TYPE block_reason AS ENUM ('holiday', 'absence');
 
 -- ============================================================================
 -- Catalog
@@ -63,7 +64,7 @@ CREATE TABLE availability_blocks (
   date date NOT NULL,
   start_time time NOT NULL,
   end_time time NOT NULL,
-  reason text,
+  reason block_reason NOT NULL,
   CHECK (end_time > start_time)
 );
 

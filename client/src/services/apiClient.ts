@@ -35,7 +35,13 @@ function headersFor(path: string, extra: Record<string, string> = {}): HeadersIn
   return headers;
 }
 
-async function request<T>(path: string, init: RequestInit): Promise<T> {
+async function request<T>(path: string, init: RequestInit, expectBody: true): Promise<T>;
+async function request<T>(path: string, init: RequestInit, expectBody: false): Promise<void>;
+async function request<T>(
+  path: string,
+  init: RequestInit,
+  expectBody: boolean
+): Promise<T | void> {
   const response = await fetch(`${API_BASE_URL}${path}`, init);
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
@@ -50,31 +56,42 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     throw new ApiError(response.status, message);
   }
   if (response.status === 204) {
-    return undefined as T;
+    if (expectBody) {
+      throw new Error(`Unexpected empty response from ${path}`);
+    }
+    return;
   }
   return (await response.json()) as T;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path, { headers: headersFor(path) });
+  return request<T>(path, { headers: headersFor(path) }, true);
 }
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "POST",
-    headers: headersFor(path, { "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-  });
+  return request<T>(
+    path,
+    {
+      method: "POST",
+      headers: headersFor(path, { "Content-Type": "application/json" }),
+      body: JSON.stringify(body),
+    },
+    true
+  );
 }
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
-  return request<T>(path, {
-    method: "PUT",
-    headers: headersFor(path, { "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-  });
+  return request<T>(
+    path,
+    {
+      method: "PUT",
+      headers: headersFor(path, { "Content-Type": "application/json" }),
+      body: JSON.stringify(body),
+    },
+    true
+  );
 }
 
 export async function apiDelete(path: string): Promise<void> {
-  await request<undefined>(path, { method: "DELETE", headers: headersFor(path) });
+  await request(path, { method: "DELETE", headers: headersFor(path) }, false);
 }

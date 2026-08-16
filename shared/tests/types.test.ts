@@ -3,6 +3,7 @@ import {
   appointmentSchema,
   appointmentStatusEnum,
   attendanceEnum,
+  blockReasonEnum,
   bookingChannelEnum,
   doctorSchema,
   patientSchema,
@@ -87,6 +88,10 @@ describe("enums", () => {
 
   it("defines the three staff roles", () => {
     expect(userRoleEnum.options).toEqual(["admin", "secretary", "doctor"]);
+  });
+
+  it("pins the block reason vocabulary to holiday and absence", () => {
+    expect(blockReasonEnum.options).toEqual(["holiday", "absence"]);
   });
 });
 

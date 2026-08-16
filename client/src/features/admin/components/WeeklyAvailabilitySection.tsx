@@ -4,6 +4,7 @@ import type { Availability, AvailabilityInput } from "../admin.types";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadState } from "../../../components/LoadState";
 import { useAvailability } from "../hooks/useAvailability";
+import { END_TIME_AFTER_START_ERROR, TimeRangeFields } from "./TimeRangeFields";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -36,7 +37,7 @@ export function WeeklyAvailabilitySection({ doctorId }: WeeklyAvailabilitySectio
     event.preventDefault();
     setSubmitError(null);
     if (endTime <= startTime) {
-      setSubmitError("End time must be after start time.");
+      setSubmitError(END_TIME_AFTER_START_ERROR);
       return;
     }
     setSubmitting(true);
@@ -73,24 +74,12 @@ export function WeeklyAvailabilitySection({ doctorId }: WeeklyAvailabilitySectio
             ))}
           </select>
         </label>
-        <label className="block">
-          <span className="mb-1 block text-lg text-gray-700">Start</span>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(event) => setStartTime(event.target.value)}
-            className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-lg text-gray-700">End</span>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(event) => setEndTime(event.target.value)}
-            className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
-          />
-        </label>
+        <TimeRangeFields
+          startTime={startTime}
+          endTime={endTime}
+          onStartTimeChange={setStartTime}
+          onEndTimeChange={setEndTime}
+        />
         <button
           type="submit"
           disabled={submitting}

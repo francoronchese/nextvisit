@@ -1,5 +1,6 @@
-import type { Availability, AvailabilityBlock, Doctor } from "@nextvisit/shared";
+import type { Availability, AvailabilityBlock, BlockReason, Doctor } from "@nextvisit/shared";
 import { query, queryOne } from "../client";
+import { getDoctorById, listAllDoctors } from "./doctors";
 
 export type AvailabilityInput = {
   doctorId: string;
@@ -13,7 +14,7 @@ export type AvailabilityBlockInput = {
   date: string;
   startTime: string;
   endTime: string;
-  reason?: string;
+  reason: BlockReason;
 };
 
 export const AVAILABILITY_COLUMNS = `id, doctor_id AS "doctorId", weekday,
@@ -40,22 +41,8 @@ export type AvailabilityQueries = {
 };
 
 export const availabilityQueries: AvailabilityQueries = {
-  async listAllDoctors() {
-    return query<Doctor>(
-      `SELECT id, specialty_id AS "specialtyId", first_name AS "firstName", last_name AS "lastName"
-       FROM doctors
-       ORDER BY last_name, first_name`
-    );
-  },
-
-  async getDoctorById(id) {
-    return queryOne<Doctor>(
-      `SELECT id, specialty_id AS "specialtyId", first_name AS "firstName", last_name AS "lastName"
-       FROM doctors
-       WHERE id = $1`,
-      [id]
-    );
-  },
+  listAllDoctors,
+  getDoctorById,
 
   async listAvailabilityForDoctor(doctorId) {
     return query<Availability>(
@@ -122,7 +109,7 @@ export const availabilityQueries: AvailabilityQueries = {
       `INSERT INTO availability_blocks (doctor_id, date, start_time, end_time, reason)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING ${AVAILABILITY_BLOCK_COLUMNS}`,
-      [input.doctorId, input.date, input.startTime, input.endTime, input.reason ?? null]
+      [input.doctorId, input.date, input.startTime, input.endTime, input.reason]
     );
     if (!block) throw new Error("failed to create availability block");
     return block;

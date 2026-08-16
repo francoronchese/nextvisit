@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { AvailabilityBlockInput } from "../admin.types";
+import { BLOCK_REASON_VALUES } from "@nextvisit/shared";
+import type { AvailabilityBlockInput, BlockReason } from "../admin.types";
 import { formatDateShort } from "@nextvisit/shared";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadState } from "../../../components/LoadState";
 import { useAvailabilityBlocks } from "../hooks/useAvailabilityBlocks";
-
-const BLOCK_REASONS = ["holiday", "absence"] as const;
+import { END_TIME_AFTER_START_ERROR, TimeRangeFields } from "./TimeRangeFields";
 
 type BlockSectionProps = {
   doctorId: string;
@@ -17,7 +17,7 @@ export function BlockSection({ doctorId }: BlockSectionProps) {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
-  const [reason, setReason] = useState<string>("holiday");
+  const [reason, setReason] = useState<BlockReason>("holiday");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -25,7 +25,7 @@ export function BlockSection({ doctorId }: BlockSectionProps) {
     event.preventDefault();
     setSubmitError(null);
     if (endTime <= startTime) {
-      setSubmitError("End time must be after start time.");
+      setSubmitError(END_TIME_AFTER_START_ERROR);
       return;
     }
     setSubmitting(true);
@@ -54,32 +54,20 @@ export function BlockSection({ doctorId }: BlockSectionProps) {
             className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-lg text-gray-700">Start</span>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(event) => setStartTime(event.target.value)}
-            className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-lg text-gray-700">End</span>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(event) => setEndTime(event.target.value)}
-            className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
-          />
-        </label>
+        <TimeRangeFields
+          startTime={startTime}
+          endTime={endTime}
+          onStartTimeChange={setStartTime}
+          onEndTimeChange={setEndTime}
+        />
         <label className="block">
           <span className="mb-1 block text-lg text-gray-700">Reason</span>
           <select
             value={reason}
-            onChange={(event) => setReason(event.target.value)}
+            onChange={(event) => setReason(event.target.value as BlockReason)}
             className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
           >
-            {BLOCK_REASONS.map((blockReason) => (
+            {BLOCK_REASON_VALUES.map((blockReason) => (
               <option key={blockReason} value={blockReason}>
                 {blockReason.charAt(0).toUpperCase() + blockReason.slice(1)}
               </option>
@@ -109,8 +97,7 @@ export function BlockSection({ doctorId }: BlockSectionProps) {
             {blocks.map((block) => (
               <li key={block.id} className="flex items-center justify-between gap-4">
                 <span className="text-lg text-gray-900">
-                  {formatDateShort(block.date)} {block.startTime}–{block.endTime}
-                  {block.reason ? ` — ${block.reason}` : ""}
+                  {formatDateShort(block.date)} {block.startTime}–{block.endTime} — {block.reason}
                 </span>
                 <button
                   type="button"

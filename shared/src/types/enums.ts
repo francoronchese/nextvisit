@@ -11,3 +11,7 @@ export type Attendance = z.infer<typeof attendanceEnum>;
 
 export const userRoleEnum = z.enum(["admin", "secretary", "doctor"]);
 export type UserRole = z.infer<typeof userRoleEnum>;
+
+export const BLOCK_REASON_VALUES = ["holiday", "absence"] as const;
+export const blockReasonEnum = z.enum(BLOCK_REASON_VALUES);
+export type BlockReason = z.infer<typeof blockReasonEnum>;

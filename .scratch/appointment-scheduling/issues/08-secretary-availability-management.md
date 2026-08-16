@@ -23,3 +23,12 @@
   per day.
 - Added `GET /api/admin/doctors` (no public all-doctors endpoint existed) so the secretary can
   select a doctor.
+
+## Comments
+
+- Review fixes 2026-08-16: the block reason vocabulary now lives as `blockReasonEnum` in
+  `shared/src/types/enums.ts` and is enforced end to end — request validator, response schema,
+  query input, and a DB `block_reason` enum column (migration 0003, NOT NULL). Added the
+  query-layer test "blocks prevent slots on those dates" under `server/tests/db/`. Deduplicated
+  the doctor/availability read SQL (new `db/queries/doctors.ts`, slots reads reuse the shared
+  column constants).

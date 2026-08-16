@@ -3,7 +3,9 @@ import { Pool } from "pg";
 import { clinicLocalToUtc } from "@nextvisit/shared";
 import { getTestDatabaseUrl } from "../../config/env";
 import { runMigrations } from "../../src/db/migrate";
+import { getAppointmentTypeById } from "../../src/db/queries/catalog";
 import { slotQueries } from "../../src/db/queries/slots";
+import { createSlotsService } from "../../src/services/slots";
 import {
   insertAppointment,
   insertAvailability,
@@ -75,7 +77,7 @@ describe("slot source queries", () => {
       date: "2026-09-07",
       startTime: "10:00",
       endTime: "11:00",
-      reason: "Holiday",
+      reason: "holiday",
     });
 
     const outOfRange = await slotQueries.listAvailabilityBlocksForDoctor(
@@ -84,6 +86,23 @@ describe("slot source queries", () => {
       "2026-09-30"
     );
     expect(outOfRange).toHaveLength(0);
+  });
+
+  it("blocks prevent slots on those dates at the query layer", async () => {
+    const fixture = await seedBaseFixture(pool, "slots-blocked");
+    await insertAvailability(pool, fixture.doctorId);
+    await insertBlock(pool, fixture.doctorId, "2026-09-07");
+
+    const service = createSlotsService({ ...slotQueries, getAppointmentTypeById });
+    const slots = await service.getSlotsForDoctor(fixture.doctorId, fixture.typeId, "2026-09-07", {
+      rangeDays: 1,
+      now: new Date("2026-09-07T00:00:00.000Z"),
+    });
+    expect(slots.filter((s) => s.date === "2026-09-07" && !s.available).map((s) => s.startTime)).toEqual([
+      "10:00",
+      "10:30",
+    ]);
+    expect(slots.filter((s) => s.date === "2026-09-07" && s.available)).toHaveLength(6);
   });
 
   it("listBookedAppointmentsForDoctor returns only scheduled appointments in UTC", async () => {

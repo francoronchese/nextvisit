@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { dateSchema, timeSchema, weekdaySchema } from "@nextvisit/shared";
+import { blockReasonEnum, dateSchema, timeSchema, weekdaySchema } from "@nextvisit/shared";
 
-const timeRangeCheck = { message: "end time must be after start time" };
+const timeRangeCheck = { message: "End time must be after start time." };
 
 export const availabilityInputSchema = z
   .object({
@@ -19,10 +19,10 @@ export const availabilityBlockInputSchema = z
     startTime: timeSchema,
     endTime: timeSchema,
     // Spec: blocks always carry a reason from a closed vocabulary.
-    reason: z.enum(["holiday", "absence"]),
+    reason: blockReasonEnum,
   })
   .refine((value) => value.endTime > value.startTime, timeRangeCheck);
 
-export const doctorListQuerySchema = z.object({
+export const doctorIdQuerySchema = z.object({
   doctorId: z.string().uuid(),
 });

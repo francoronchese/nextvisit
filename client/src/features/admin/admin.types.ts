@@ -1,6 +1,6 @@
-import type { User } from "@nextvisit/shared";
+import type { BlockReason, User } from "@nextvisit/shared";
 
-export type { Availability, AvailabilityBlock, Doctor } from "@nextvisit/shared";
+export type { Availability, AvailabilityBlock, BlockReason, Doctor } from "@nextvisit/shared";
 
 export type LoginCredentials = {
   email: string;
@@ -24,5 +24,5 @@ export type AvailabilityBlockInput = {
   date: string;
   startTime: string;
   endTime: string;
-  reason?: string;
+  reason: BlockReason;
 };

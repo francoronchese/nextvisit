@@ -26,7 +26,7 @@ const block: AvailabilityBlock = {
   date: "2026-09-07",
   startTime: "10:00",
   endTime: "11:00",
-  reason: "Holiday",
+  reason: "holiday",
 };
 
 const NO_MATCH = "00000000-0000-0000-0000-000000000000";
@@ -146,7 +146,13 @@ describe("availability service", () => {
   it("rejects creating a block for an unknown doctor", async () => {
     const service = createAvailabilityService(buildFakeQueries());
     await expect(
-      service.createBlock({ doctorId: NO_MATCH, date: "2026-09-08", startTime: "09:00", endTime: "17:00" })
+      service.createBlock({
+        doctorId: NO_MATCH,
+        date: "2026-09-08",
+        startTime: "09:00",
+        endTime: "17:00",
+        reason: "absence",
+      })
     ).rejects.toMatchObject({ status: 404 });
   });
 

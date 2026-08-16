@@ -2,6 +2,8 @@ import type { Availability, AvailabilityBlock, Doctor } from "@nextvisit/shared"
 import type { QueryExecutor } from "../client";
 import { query, queryOne } from "../client";
 import { utcIso } from "../sql";
+import { getDoctorByIdVia } from "./doctors";
+import { AVAILABILITY_BLOCK_COLUMNS, AVAILABILITY_COLUMNS } from "./availability";
 
 export type BookedAppointment = {
   startsAt: string;
@@ -30,12 +32,7 @@ export type SlotQueries = {
 export function createSlotQueries(executor: QueryExecutor): SlotQueries {
   return {
     getDoctorById(id) {
-      return executor.queryOne<Doctor>(
-        `SELECT id, specialty_id AS "specialtyId", first_name AS "firstName", last_name AS "lastName"
-         FROM doctors
-         WHERE id = $1`,
-        [id]
-      );
+      return getDoctorByIdVia(executor, id);
     },
 
     async getDoctorOffersType(doctorId, typeId) {
@@ -50,9 +47,7 @@ export function createSlotQueries(executor: QueryExecutor): SlotQueries {
 
     listAvailabilityForDoctor(doctorId) {
       return executor.query<Availability>(
-        `SELECT id, doctor_id AS "doctorId", weekday,
-                to_char(start_time, 'HH24:MI') AS "startTime",
-                to_char(end_time, 'HH24:MI') AS "endTime"
+        `SELECT ${AVAILABILITY_COLUMNS}
          FROM availabilities
          WHERE doctor_id = $1
          ORDER BY weekday, start_time`,
@@ -62,9 +57,7 @@ export function createSlotQueries(executor: QueryExecutor): SlotQueries {
 
     listAvailabilityBlocksForDoctor(doctorId, fromDate, toDate) {
       return executor.query<AvailabilityBlock>(
-        `SELECT id, doctor_id AS "doctorId", to_char(date, 'YYYY-MM-DD') AS "date",
-                to_char(start_time, 'HH24:MI') AS "startTime",
-                to_char(end_time, 'HH24:MI') AS "endTime", reason
+        `SELECT ${AVAILABILITY_BLOCK_COLUMNS}
          FROM availability_blocks
          WHERE doctor_id = $1 AND date >= $2 AND date <= $3
          ORDER BY date, start_time`,

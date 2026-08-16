@@ -43,7 +43,6 @@ export async function respondWithResource<T>(
   }
 }
 
-// Deletes have no body: run the service, map HttpErrors, end with 204 on success.
 export async function respondDeleted(res: Response, resource: () => Promise<void>): Promise<void> {
   try {
     await resource();

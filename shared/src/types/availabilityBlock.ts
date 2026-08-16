@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { blockReasonEnum } from "./enums";
 import { dateSchema, timeSchema } from "./primitives";
 
 export const availabilityBlockSchema = z.object({
@@ -7,7 +8,7 @@ export const availabilityBlockSchema = z.object({
   date: dateSchema,
   startTime: timeSchema,
   endTime: timeSchema,
-  reason: z.string().min(1).optional(),
+  reason: blockReasonEnum,
 });
 
 export type AvailabilityBlock = z.infer<typeof availabilityBlockSchema>;

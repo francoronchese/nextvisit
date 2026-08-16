@@ -91,7 +91,7 @@ describe("slots service", () => {
       date: MONDAY,
       startTime: "10:00",
       endTime: "11:00",
-      reason: "Holiday",
+      reason: "holiday",
     };
     const service = createSlotsService(
       buildFakeQueries({ listAvailabilityBlocksForDoctor: () => Promise.resolve([block]) })
