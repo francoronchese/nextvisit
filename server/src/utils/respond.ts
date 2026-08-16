@@ -42,3 +42,18 @@ export async function respondWithResource<T>(
     throw error;
   }
 }
+
+// Deletes have no body: run the service, map HttpErrors, end with 204 on success.
+export async function respondDeleted(res: Response, resource: () => Promise<void>): Promise<void> {
+  try {
+    await resource();
+    res.status(204).end();
+  } catch (error) {
+    const httpStatus = httpErrorStatus(error);
+    if (httpStatus !== undefined) {
+      res.status(httpStatus).json({ error: error instanceof Error ? error.message : "unexpected error" });
+      return;
+    }
+    throw error;
+  }
+}

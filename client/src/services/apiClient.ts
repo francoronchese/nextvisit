@@ -49,6 +49,9 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     }
     throw new ApiError(response.status, message);
   }
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return (await response.json()) as T;
 }
 
@@ -62,4 +65,16 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     headers: headersFor(path, { "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
+}
+
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PUT",
+    headers: headersFor(path, { "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  await request<undefined>(path, { method: "DELETE", headers: headersFor(path) });
 }

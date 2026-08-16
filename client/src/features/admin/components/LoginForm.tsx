@@ -1,35 +1,21 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { LoginCredentials } from "../admin.types";
-import { useAdminLogin } from "../hooks/useAdminLogin";
 
-export function LoginForm() {
-  const { user, loading, error, login, logout } = useAdminLogin();
+type LoginFormProps = {
+  loading: boolean;
+  error: string | null;
+  onLogin: (credentials: LoginCredentials) => void;
+};
+
+export function LoginForm({ loading, error, onLogin }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const credentials: LoginCredentials = { email, password };
-    void login(credentials);
+    onLogin({ email, password });
   };
-
-  if (user) {
-    return (
-      <div>
-        <p className="text-lg text-gray-700">
-          Welcome back, {user.email} ({user.role}).
-        </p>
-        <button
-          type="button"
-          onClick={logout}
-          className="mt-4 cursor-pointer rounded-2xl border-2 border-gray-200 px-4 py-2 font-medium text-gray-900 hover:border-blue-400"
-        >
-          Sign out
-        </button>
-      </div>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
