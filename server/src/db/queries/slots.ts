@@ -1,5 +1,6 @@
 import type { Availability, AvailabilityBlock, Doctor } from "@nextvisit/shared";
 import { query, queryOne } from "../client";
+import { utcIso } from "../sql";
 
 export type BookedAppointment = {
   startsAt: string;
@@ -16,8 +17,8 @@ export async function getDoctorById(id: string): Promise<Doctor | undefined> {
 }
 
 export async function getDoctorOffersType(doctorId: string, typeId: string): Promise<boolean> {
-  const row = await queryOne<{ one: number }>(
-    `SELECT 1
+  const row = await queryOne<{ offered: number }>(
+    `SELECT 1 AS offered
      FROM doctor_appointment_types
      WHERE doctor_id = $1 AND appointment_type_id = $2`,
     [doctorId, typeId]
@@ -59,7 +60,7 @@ export async function listBookedAppointmentsForDoctor(
   toInstant: Date
 ): Promise<BookedAppointment[]> {
   return query<BookedAppointment>(
-    `SELECT to_char(starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.000"Z"') AS "startsAt",
+    `SELECT ${utcIso("starts_at")} AS "startsAt",
             duration_minutes AS "durationMinutes"
      FROM appointments
      WHERE doctor_id = $1 AND status = 'scheduled' AND starts_at >= $2 AND starts_at < $3

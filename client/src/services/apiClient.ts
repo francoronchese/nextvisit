@@ -9,10 +9,57 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+let staffSessionToken: string | null = null;
+
+export function setStaffSessionToken(token: string): void {
+  staffSessionToken = token;
+}
+
+export function getStaffSessionToken(): string | null {
+  return staffSessionToken;
+}
+
+export function clearStaffSessionToken(): void {
+  staffSessionToken = null;
+}
+
+function isAdminPath(path: string): boolean {
+  return path.startsWith("/api/admin");
+}
+
+function headersFor(path: string, extra: Record<string, string> = {}): HeadersInit {
+  const headers = { ...extra };
+  if (isAdminPath(path) && staffSessionToken) {
+    headers.Authorization = `Bearer ${staffSessionToken}`;
+  }
+  return headers;
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
   if (!response.ok) {
-    throw new ApiError(response.status, `Request failed with status ${response.status}`);
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const body = (await response.json()) as { error?: unknown };
+      if (typeof body.error === "string") {
+        message = body.error;
+      }
+    } catch {
+      // Non-JSON error bodies keep the generic message.
+    }
+    throw new ApiError(response.status, message);
   }
   return (await response.json()) as T;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  return request<T>(path, { headers: headersFor(path) });
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: headersFor(path, { "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
 }

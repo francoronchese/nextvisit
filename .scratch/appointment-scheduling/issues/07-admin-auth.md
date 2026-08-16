@@ -4,12 +4,12 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `POST /api/admin/login` validates credentials and returns a session token
-- [ ] Password hashed with bcrypt (or equivalent)
-- [ ] Auth middleware protects all `/api/admin/*` routes except login
-- [ ] UI: login page in `features/admin/`
-- [ ] Global HTTP client (`client/src/services/apiClient.ts`) injects staff session token on admin requests
-- [ ] Service-layer unit tests: valid login returns token, invalid credentials rejected
-- [ ] API contract test: login flow
+- [x] `POST /api/admin/login` validates credentials and returns a session token
+- [x] Password hashed with bcrypt (or equivalent)
+- [x] Auth middleware protects all `/api/admin/*` routes except login
+- [x] UI: login page in `features/admin/`
+- [x] Global HTTP client (`client/src/services/apiClient.ts`) injects staff session token on admin requests
+- [x] Service-layer unit tests: valid login returns token, invalid credentials rejected
+- [x] API contract test: login flow

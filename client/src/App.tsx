@@ -1,6 +1,10 @@
+import { AdminLoginPage } from "./features/admin";
 import { BookingFlow } from "./features/booking";
 
 export default function App() {
+  if (window.location.pathname.startsWith("/admin")) {
+    return <AdminLoginPage />;
+  }
   return (
     <main className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">

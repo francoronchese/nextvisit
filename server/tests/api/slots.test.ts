@@ -90,6 +90,20 @@ describe("slots API", () => {
     expect(res.body).toEqual({ error: "appointment type not found" });
   });
 
+  it("returns 404 when the doctor does not offer the appointment type", async () => {
+    const fixture = await seedBaseFixture(pool, "slots-api-no-offer");
+    const doctor = await pool.query(
+      "INSERT INTO doctors (specialty_id, first_name, last_name) VALUES ($1, 'No', 'Offer') RETURNING id",
+      [fixture.specialtyId]
+    );
+    const doctorId = doctor.rows[0].id as string;
+    const res = await request(app)
+      .get(`/api/doctors/${doctorId}/slots`)
+      .query({ typeId: fixture.typeId, date: MONDAY })
+      .expect(404);
+    expect(res.body).toEqual({ error: "appointment type for this doctor not found" });
+  });
+
   it("returns 400 for a malformed id", async () => {
     const res = await request(app)
       .get("/api/doctors/not-a-uuid/slots")

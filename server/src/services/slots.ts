@@ -137,7 +137,7 @@ export function createSlotsService(queries: SlotQueries): SlotsService {
       }
       const offersType = await queries.getDoctorOffersType(doctorId, typeId);
       if (!offersType) {
-        throw new NotFoundError("appointment type");
+        throw new NotFoundError("appointment type for this doctor");
       }
 
       const lastDate = addDays(startDate, rangeDays - 1);

@@ -20,3 +20,11 @@ export function getTestDatabaseUrl(): string {
   }
   return url;
 }
+
+export function getAuthTokenSecret(): string {
+  const secret = process.env.AUTH_TOKEN_SECRET;
+  if (!secret) {
+    throw new Error("AUTH_TOKEN_SECRET is not set (see .env.example at the repo root)");
+  }
+  return secret;
+}
