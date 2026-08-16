@@ -1,8 +1,18 @@
-import type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";
+import type { AppointmentType, Doctor, HealthInsurance, Specialty } from "@nextvisit/shared";
 import { query, queryOne } from "../client";
 
 export async function listSpecialties(): Promise<Specialty[]> {
   return query<Specialty>("SELECT id, name FROM specialties ORDER BY name");
+}
+
+export const HEALTH_INSURANCE_COLUMNS = `id, name, copay_amount::float8 AS "copayAmount"`;
+
+export async function listHealthInsurances(): Promise<HealthInsurance[]> {
+  return query<HealthInsurance>(
+    `SELECT ${HEALTH_INSURANCE_COLUMNS}
+     FROM health_insurances
+     ORDER BY name`
+  );
 }
 
 export async function getSpecialtyById(id: string): Promise<Specialty | undefined> {

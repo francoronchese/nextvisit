@@ -1,6 +1,7 @@
 import express from "express";
 import "../config/env";
 import { adminRouter } from "./api/admin";
+import { bookingsRouter } from "./api/bookings";
 import { catalogRouter } from "./api/catalog";
 import { slotsRouter } from "./api/slots";
 import { errorHandler } from "./middlewares/errorHandler";
@@ -16,6 +17,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api", catalogRouter);
 app.use("/api", slotsRouter);
+app.use("/api", bookingsRouter);
 app.use("/api", adminRouter);
 
 app.use(errorHandler);

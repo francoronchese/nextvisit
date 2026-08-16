@@ -1,6 +1,7 @@
-export class NotFoundError extends Error {
+import { HttpError } from "./httpError";
+
+export class NotFoundError extends HttpError {
   constructor(resource: string) {
-    super(`${resource} not found`);
-    this.name = "NotFoundError";
+    super(404, `${resource} not found`, "NotFoundError");
   }
 }

@@ -1,8 +1,12 @@
-import type { AppointmentType, Doctor, Specialty } from "../booking.types";
+import type { AppointmentType, Doctor, HealthInsurance, Specialty } from "../booking.types";
 import { useResource, type ResourceState } from "./useResource";
 
 export function useSpecialties(): ResourceState<Specialty[]> {
   return useResource<Specialty[]>("/api/specialties");
+}
+
+export function useHealthInsurances(): ResourceState<HealthInsurance[]> {
+  return useResource<HealthInsurance[]>("/api/health-insurances");
 }
 
 export function useAppointmentTypes(

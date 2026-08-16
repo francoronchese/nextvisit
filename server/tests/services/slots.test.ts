@@ -211,4 +211,23 @@ describe("slots service", () => {
       NotFoundError
     );
   });
+
+  it("returns a single available slot with its duration", async () => {
+    const service = createSlotsService(buildFakeQueries());
+
+    await expect(
+      service.getAvailableSlot(maria.id, consulta.id, MONDAY, "10:00", NOW_BEFORE_RANGE)
+    ).resolves.toEqual({ slot: slot(MONDAY, "10:00", "10:30", true), durationMinutes: 30 });
+  });
+
+  it("returns undefined when the requested slot is not available", async () => {
+    const booked: BookedAppointment[] = [{ startsAt: MONDAY_11AM_UTC, durationMinutes: 30 }];
+    const service = createSlotsService(
+      buildFakeQueries({ listBookedAppointmentsForDoctor: () => Promise.resolve(booked) })
+    );
+
+    await expect(
+      service.getAvailableSlot(maria.id, consulta.id, MONDAY, "11:00", NOW_BEFORE_RANGE)
+    ).resolves.toBeUndefined();
+  });
 });

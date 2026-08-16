@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";
+import type { AppointmentType, Doctor, HealthInsurance, Specialty } from "@nextvisit/shared";
 import { createCatalogService, type CatalogQueries } from "../../src/services/catalog";
 import { NotFoundError } from "../../src/utils/notFoundError";
 
@@ -44,6 +44,12 @@ const lucia: Doctor = {
   lastName: "Rodríguez",
 };
 
+const insuranceIoma: HealthInsurance = {
+  id: "c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a1a",
+  name: "IOMA",
+  copayAmount: 5000,
+};
+
 function buildFakeQueries(): CatalogQueries {
   const specialties: Specialty[] = [cardio, derma];
   const types: AppointmentType[] = [consultaCardio, ecocardiograma, consultaDerma];
@@ -60,6 +66,7 @@ function buildFakeQueries(): CatalogQueries {
       Promise.resolve(types.filter((t) => t.specialtyId === id)),
     getAppointmentTypeById: (id) => Promise.resolve(types.find((t) => t.id === id)),
     listDoctorsForType: (id) => Promise.resolve(doctorsByType[id] ?? []),
+    listHealthInsurances: () => Promise.resolve([insuranceIoma]),
   };
 }
 
@@ -96,5 +103,10 @@ describe("catalog service", () => {
     await expect(service.getDoctorsForType(UNKNOWN_ID)).rejects.toBeInstanceOf(
       NotFoundError
     );
+  });
+
+  it("lists health insurances", async () => {
+    const service = createCatalogService(buildFakeQueries());
+    await expect(service.getHealthInsurances()).resolves.toEqual([insuranceIoma]);
   });
 });

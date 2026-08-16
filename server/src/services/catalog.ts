@@ -1,9 +1,10 @@
-import type { AppointmentType, Doctor, Specialty } from "@nextvisit/shared";
+import type { AppointmentType, Doctor, HealthInsurance, Specialty } from "@nextvisit/shared";
 import {
   getAppointmentTypeById,
   getSpecialtyById,
   listAppointmentTypesForSpecialty,
   listDoctorsForType,
+  listHealthInsurances,
   listSpecialties,
 } from "../db/queries/catalog";
 import { NotFoundError } from "../utils/notFoundError";
@@ -14,12 +15,14 @@ export type CatalogQueries = {
   listAppointmentTypesForSpecialty(specialtyId: string): Promise<AppointmentType[]>;
   getAppointmentTypeById(id: string): Promise<AppointmentType | undefined>;
   listDoctorsForType(typeId: string): Promise<Doctor[]>;
+  listHealthInsurances(): Promise<HealthInsurance[]>;
 };
 
 export type CatalogService = {
   getSpecialties(): Promise<Specialty[]>;
   getAppointmentTypesForSpecialty(specialtyId: string): Promise<AppointmentType[]>;
   getDoctorsForType(typeId: string): Promise<Doctor[]>;
+  getHealthInsurances(): Promise<HealthInsurance[]>;
 };
 
 async function listChildrenOfExistingParent<T>(
@@ -56,6 +59,9 @@ export function createCatalogService(queries: CatalogQueries): CatalogService {
         "type"
       );
     },
+    getHealthInsurances() {
+      return queries.listHealthInsurances();
+    },
   };
 }
 
@@ -65,4 +71,5 @@ export const catalogService = createCatalogService({
   listAppointmentTypesForSpecialty,
   getAppointmentTypeById,
   listDoctorsForType,
+  listHealthInsurances,
 });

@@ -19,6 +19,12 @@ const consultaDerma = {
   durationMinutes: 30,
 };
 
+const insurance = {
+  id: "c1eebc99-9c0b-4ef8-bb6d-6bb9bd380a1a",
+  name: "IOMA",
+  copayAmount: 5000,
+};
+
 const maria = {
   id: "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16",
   specialtyId: cardio.id,
@@ -41,6 +47,9 @@ async function defaultFetch(input: RequestInfo | URL): Promise<Response> {
   if (url === "/api/specialties") {
     return jsonResponse([cardio, derma]);
   }
+  if (url === "/api/health-insurances") {
+    return jsonResponse([insurance]);
+  }
   if (url === `/api/specialties/${cardio.id}/types`) {
     return jsonResponse([consultaCardio]);
   }
@@ -61,6 +70,16 @@ async function defaultFetch(input: RequestInfo | URL): Promise<Response> {
 
 const fetchMock = vi.fn(defaultFetch);
 
+async function fillPatientForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(await screen.findByLabelText("DNI"), "30111222");
+  await user.type(screen.getByLabelText("First name"), "Ana");
+  await user.type(screen.getByLabelText("Last name"), "Pérez");
+  await user.selectOptions(await screen.findByLabelText("Health insurance"), insurance.id);
+  await user.type(screen.getByLabelText("Phone"), "555-0101");
+  await user.type(screen.getByLabelText("Email"), "ana@example.com");
+  await user.click(screen.getByRole("button", { name: "Continue" }));
+}
+
 beforeEach(() => {
   fetchMock.mockClear();
   fetchMock.mockImplementation(defaultFetch);
@@ -71,10 +90,49 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("BookingFlow — patient form step", () => {
+  it("starts with the patient data form", async () => {
+    render(<BookingFlow />);
+    expect(
+      await screen.findByRole("heading", { name: "Tell us who you are" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Which specialty do you need?" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not advance when the form has validation errors", async () => {
+    const user = userEvent.setup();
+    render(<BookingFlow />);
+
+    await user.click(await screen.findByRole("button", { name: "Continue" }));
+
+    expect(screen.getByText(/DNI must be 7 to 8 digits/)).toBeInTheDocument();
+    expect(screen.getByText(/First name is required/)).toBeInTheDocument();
+    expect(screen.getByText(/Enter a valid email address/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Tell us who you are" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps patient data when going back to the form", async () => {
+    const user = userEvent.setup();
+    render(<BookingFlow />);
+
+    await fillPatientForm(user);
+    await user.click(screen.getByRole("button", { name: "← Back" }));
+
+    expect(screen.getByLabelText("DNI")).toHaveValue("30111222");
+    expect(screen.getByLabelText("Email")).toHaveValue("ana@example.com");
+  });
+});
+
 describe("BookingFlow — catalog browsing steps", () => {
   it("advances specialty → type → doctor, only after a selection", async () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
+
+    await fillPatientForm(user);
 
     expect(
       await screen.findByRole("heading", { name: "Which specialty do you need?" })
@@ -104,6 +162,9 @@ describe("BookingFlow — catalog browsing steps", () => {
     let fail = true;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/health-insurances") {
+        return jsonResponse([insurance]);
+      }
       if (url === "/api/specialties") {
         if (fail) {
           fail = false;
@@ -117,6 +178,8 @@ describe("BookingFlow — catalog browsing steps", () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
 
+    await fillPatientForm(user);
+
     expect(await screen.findByRole("alert")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Retry/ }));
@@ -128,6 +191,7 @@ describe("BookingFlow — catalog browsing steps", () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
 
+    await fillPatientForm(user);
     await user.click(await screen.findByRole("button", { name: "Cardiology" }));
     await user.click(await screen.findByRole("button", { name: /Cardiology consultation/ }));
     await user.click(await screen.findByRole("button", { name: "María González" }));
@@ -158,6 +222,7 @@ describe("BookingFlow — catalog browsing steps", () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
 
+    await fillPatientForm(user);
     await user.click(await screen.findByRole("button", { name: "Cardiology" }));
     await user.click(await screen.findByRole("button", { name: /Cardiology consultation/ }));
     await user.click(await screen.findByRole("button", { name: "María González" }));
@@ -183,6 +248,7 @@ describe("BookingFlow — catalog browsing steps", () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
 
+    await fillPatientForm(user);
     await user.click(await screen.findByRole("button", { name: "Cardiology" }));
     await user.click(await screen.findByRole("button", { name: /Cardiology consultation/ }));
     await user.click(await screen.findByRole("button", { name: "María González" }));
@@ -201,12 +267,14 @@ describe("BookingFlow — catalog browsing steps", () => {
 
     await user.click(available);
     expect(screen.getByText(/You chose 2026-09-07 at 09:00/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm booking" })).toBeInTheDocument();
   });
 
   it("clears downstream selections when picking a different specialty", async () => {
     const user = userEvent.setup();
     render(<BookingFlow />);
 
+    await fillPatientForm(user);
     await user.click(await screen.findByRole("button", { name: "Cardiology" }));
     await user.click(await screen.findByRole("button", { name: /Cardiology consultation/ }));
 
