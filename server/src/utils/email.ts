@@ -22,10 +22,20 @@ export type RescheduleConfirmationEmailInput = {
   oneTimeLinkUrl: string;
 };
 
+export type ReminderEmailInput = {
+  to: string;
+  patientFirstName: string;
+  patientLastName: string;
+  doctorName: string;
+  appointmentTypeName: string;
+  startsAt: string;
+};
+
 export type EmailNotifier = {
   sendConfirmationEmail(input: ConfirmationEmailInput): Promise<void>;
   sendCancellationEmail(input: CancellationEmailInput): Promise<void>;
   sendRescheduleConfirmationEmail(input: RescheduleConfirmationEmailInput): Promise<void>;
+  sendReminderEmail(input: ReminderEmailInput): Promise<void>;
 };
 
 function appUrl(): string {
@@ -110,11 +120,37 @@ function buildRescheduleConfirmationHtml(input: RescheduleConfirmationEmailInput
   `;
 }
 
+function buildReminderText(input: ReminderEmailInput): string {
+  return [
+    `Hello ${input.patientFirstName} ${input.patientLastName},`,
+    "",
+    `This is a reminder that you have an appointment with ${input.doctorName} (${input.appointmentTypeName}) on ${formatAppointmentStart(input.startsAt)}.`,
+    "",
+    "If you need to cancel or reschedule, use the link you received by email for this appointment.",
+    "",
+    "Next Visit",
+  ].join("\n");
+}
+
+function buildReminderHtml(input: ReminderEmailInput): string {
+  return `
+    <p>Hello ${input.patientFirstName} ${input.patientLastName},</p>
+    <p>This is a reminder that you have an appointment with <strong>${input.doctorName}</strong> (${input.appointmentTypeName}) on <strong>${formatAppointmentStart(input.startsAt)}</strong>.</p>
+    <p>If you need to cancel or reschedule, use the link you received by email for this appointment.</p>
+    <p>Next Visit</p>
+  `;
+}
+
 export function createResendNotifier(): EmailNotifier {
   const apiKey = process.env.RESEND_API_KEY;
   const resend = apiKey ? new Resend(apiKey) : undefined;
 
   async function send(subject: string, text: string, html: string, to: string): Promise<void> {
+    // Spec: emails go out whenever the patient provided an email; an empty
+    // address (front-desk booking without an email) means nothing to send to.
+    if (!to) {
+      return;
+    }
     if (!resend) {
       if (process.env.NODE_ENV !== "test") {
         console.warn("RESEND_API_KEY is not set; skipping booking email");
@@ -158,6 +194,15 @@ export function createResendNotifier(): EmailNotifier {
         input.to
       );
     },
+    sendReminderEmail(input) {
+      const { date, time } = utcToClinicParts(new Date(input.startsAt));
+      return send(
+        `Appointment reminder: ${date} at ${time}`,
+        buildReminderText(input),
+        buildReminderHtml(input),
+        input.to
+      );
+    },
   };
 }
 
@@ -165,10 +210,14 @@ export function buildOneTimeLinkUrl(token: string): string {
   return `${appUrl()}/appointments/${token}`;
 }
 
-export async function sendBestEffort(action: () => Promise<void>): Promise<void> {
-  await action().catch((error: unknown) => {
+export async function sendBestEffort(action: () => Promise<void>): Promise<boolean> {
+  try {
+    await action();
+    return true;
+  } catch (error: unknown) {
     console.error("failed to send email:", error);
-  });
+    return false;
+  }
 }
 
 export const resendNotifier = createResendNotifier();

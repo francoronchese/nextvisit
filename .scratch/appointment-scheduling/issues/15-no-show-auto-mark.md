@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Vercel Cron endpoint marks appointments as no-show when `starts_at` has passed
+- [ ] GitHub Actions scheduled job marks appointments as no-show when `starts_at` has passed
 - [ ] Only affects `scheduled` status appointments (not cancelled or already ended)
 - [ ] Service-layer unit tests: cron marks correct appointments, skips already-ended
 - [ ] Query-layer integration tests: status update applied correctly

@@ -103,6 +103,9 @@ describe("AppointmentManagementPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/María González, Cardiology/)).toBeInTheDocument();
     expect(screen.getByText(/lunes, 7 de septiembre de 2026 at 09:00/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/You will receive a reminder 24h before your appointment/)
+    ).toBeInTheDocument();
   });
 
   it("cancels the appointment and shows the cancellation confirmation", async () => {

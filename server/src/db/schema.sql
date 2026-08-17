@@ -102,6 +102,10 @@ CREATE TABLE appointments (
   booking_channel booking_channel NOT NULL,
   status appointment_status NOT NULL DEFAULT 'scheduled',
   attendance attendance NOT NULL DEFAULT 'pending',
+  -- 24h reminder emails are driven by the scheduled reminder job; NULL means
+  -- not yet reminded and the reminder query filters on it so the job never
+  -- emails twice.
+  reminder_sent_at timestamptz,
   copay_amount numeric(10,2) NOT NULL CHECK (copay_amount >= 0),
   copay_paid boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -137,6 +141,9 @@ ALTER TABLE appointments
 
 CREATE INDEX appointments_patient_id_idx ON appointments (patient_id);
 CREATE INDEX appointments_status_idx ON appointments (status);
+CREATE INDEX appointments_reminder_due_idx
+  ON appointments (status, starts_at)
+  WHERE reminder_sent_at IS NULL;
 
 -- ============================================================================
 -- One-time links (cancel/reschedule authorization, see ADR-0001)

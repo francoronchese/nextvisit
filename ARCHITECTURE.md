@@ -118,7 +118,7 @@ A single domain concept (e.g. Appointment) typically has BOTH: a table definitio
                                    Resend (email)        |
                             (confirmation, reminder,     |
                               one-time link)             |
-                      [Vercel Cron] -- 24h reminder --> server
+                      [GitHub Actions cron] -- 24h reminder --> server
 
 [Secretary / Doctor / Admin] <----> [client: /admin panel] <----> [server] <----> [Neon Postgres]
 ```
@@ -160,7 +160,7 @@ A single domain concept (e.g. Appointment) typically has BOTH: a table definitio
   - `users` (staff: admin, secretary, doctor — hashed passwords)
   - `booking_attempts` (anti-spam: rate limiting keyed by DNI)
 
-No cache or queue. Reminders are driven by Vercel Cron querying upcoming appointments.
+No cache or queue. Reminders are driven by a scheduled GitHub Actions workflow querying upcoming appointments.
 
 See `DATA-MODEL.md` for the full data model: entity purposes, a Mermaid ER diagram, critical constraints, the appointment lifecycle, RBAC, migrations, and seed data.
 
@@ -175,7 +175,7 @@ See `DATA-MODEL.md` for the full data model: entity purposes, a Mermaid ER diagr
 - **Cloud Provider**: Vercel — client SPA + serverless functions
 - **Database**: Neon (managed Postgres with connection pooling suited to serverless)
 - **CI/CD**: not set up yet
-- **Cron**: Vercel Cron for the 24h appointment reminders
+- **Cron**: GitHub Actions scheduled workflow (hourly) for the 24h appointment reminders; hits `POST /api/reminders` with `REMINDERS_SECRET` as bearer token (ADR-0005)
 - **Visual QA**: Puppeteer script capturing screenshots of each view for manual review
 - **Monitoring & Logging**: Vercel logs (basic)
 

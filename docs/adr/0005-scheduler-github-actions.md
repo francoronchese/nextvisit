@@ -1,0 +1,3 @@
+# Scheduled Jobs Run on GitHub Actions, Not Vercel Cron
+
+The 24h reminder job (and the future no-show auto-mark job) is triggered by a GitHub Actions scheduled workflow that calls the authenticated `POST /api/reminders` endpoint with `REMINDERS_SECRET` as a bearer token, instead of a Vercel Cron. Vercel's free Hobby plan caps cron jobs at once per day (and only within the hour), which cannot deliver an hourly reminder; GitHub Actions schedules are free, keep the hourly cadence, and hit the same serverless endpoint. The trade-off is a dependency on GitHub Actions timing (a few minutes of lag) and that secrets live both in the GitHub repo (`REMINDERS_SECRET`) and in Vercel so the endpoint can validate the request.

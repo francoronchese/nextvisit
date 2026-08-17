@@ -103,4 +103,4 @@ A web app with two surfaces: a public booking flow where a patient enters their 
 - The confirmation screen is the immediate feedback for web bookings; email is the durable reference.
 - Zod is assumed for shared domain schemas and server request validators (decision recorded in ARCHITECTURE.md); flat TS types + manual validation would not change the module layout.
 - Exact seed data (specialties, doctors, health insurances, copay amounts) is finalized at implementation time.
-- Deployment is Vercel (client + serverless functions) + Neon, both on free tiers; reminders and no-show marking run on Vercel Cron.
+- Deployment is Vercel (client + serverless functions) + Neon, both on free tiers; reminders and no-show marking run on GitHub Actions scheduled workflows (Vercel Cron's free tier caps cadence at once per day).

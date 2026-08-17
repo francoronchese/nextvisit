@@ -13,6 +13,9 @@ export function AppointmentCard({ detail }: { detail: AppointmentDetail }) {
       <p className="mt-4 text-2xl font-semibold text-gray-900">
         {formatAppointmentStart(appointment.startsAt)}
       </p>
+      <p className="mt-2 text-lg text-gray-700">
+        You will receive a reminder 24h before your appointment.
+      </p>
     </div>
   );
 }

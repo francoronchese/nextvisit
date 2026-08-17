@@ -28,3 +28,10 @@ export function getAuthTokenSecret(): string {
   }
   return secret;
 }
+
+// The GitHub Actions scheduled workflow sends the request with
+// `Authorization: Bearer $REMINDERS_SECRET`.
+// Optional locally: when unset, the reminders route refuses requests (fails closed).
+export function getRemindersSecret(): string | undefined {
+  return process.env.REMINDERS_SECRET;
+}
