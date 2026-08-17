@@ -1,5 +1,5 @@
 import type { Appointment, HealthInsurance, OneTimeLink, Patient } from "@nextvisit/shared";
-import type { QueryExecutor } from "../client";
+import { requireRow, type QueryExecutor } from "../client";
 import { utcIso } from "../sql";
 import { HEALTH_INSURANCE_COLUMNS } from "./catalog";
 
@@ -96,57 +96,61 @@ export function createBookingQueries(executor: QueryExecutor): BookingQueries {
     },
 
     async createPatient(input) {
-      const patient = await executor.queryOne<Patient>(
-        `INSERT INTO patients (dni, first_name, last_name, health_insurance_id, phone, email)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING ${PATIENT_COLUMNS}`,
-        [input.dni, input.firstName, input.lastName, input.healthInsuranceId, input.phone, input.email ?? null]
+      return requireRow(
+        await executor.queryOne<Patient>(
+          `INSERT INTO patients (dni, first_name, last_name, health_insurance_id, phone, email)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING ${PATIENT_COLUMNS}`,
+          [input.dni, input.firstName, input.lastName, input.healthInsuranceId, input.phone, input.email ?? null]
+        ),
+        "create patient"
       );
-      if (!patient) throw new Error("failed to create patient");
-      return patient;
     },
 
     async updatePatient(id, input) {
-      const patient = await executor.queryOne<Patient>(
-        `UPDATE patients
-         SET first_name = $2, last_name = $3, health_insurance_id = $4, phone = $5, email = $6
-         WHERE id = $1
-         RETURNING ${PATIENT_COLUMNS}`,
-        [id, input.firstName, input.lastName, input.healthInsuranceId, input.phone, input.email ?? null]
+      return requireRow(
+        await executor.queryOne<Patient>(
+          `UPDATE patients
+           SET first_name = $2, last_name = $3, health_insurance_id = $4, phone = $5, email = $6
+           WHERE id = $1
+           RETURNING ${PATIENT_COLUMNS}`,
+          [id, input.firstName, input.lastName, input.healthInsuranceId, input.phone, input.email ?? null]
+        ),
+        "update patient"
       );
-      if (!patient) throw new Error("failed to update patient");
-      return patient;
     },
 
     async createAppointment(input) {
-      const appointment = await executor.queryOne<Appointment>(
-        `INSERT INTO appointments
-          (patient_id, doctor_id, appointment_type_id, starts_at, duration_minutes, booking_channel, copay_amount)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING ${APPOINTMENT_COLUMNS}`,
-        [
-          input.patientId,
-          input.doctorId,
-          input.appointmentTypeId,
-          input.startsAt,
-          input.durationMinutes,
-          input.bookingChannel,
-          input.copayAmount,
-        ]
+      return requireRow(
+        await executor.queryOne<Appointment>(
+          `INSERT INTO appointments
+            (patient_id, doctor_id, appointment_type_id, starts_at, duration_minutes, booking_channel, copay_amount)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING ${APPOINTMENT_COLUMNS}`,
+          [
+            input.patientId,
+            input.doctorId,
+            input.appointmentTypeId,
+            input.startsAt,
+            input.durationMinutes,
+            input.bookingChannel,
+            input.copayAmount,
+          ]
+        ),
+        "create appointment"
       );
-      if (!appointment) throw new Error("failed to create appointment");
-      return appointment;
     },
 
     async createOneTimeLink(input) {
-      const link = await executor.queryOne<OneTimeLink>(
-        `INSERT INTO one_time_links (appointment_id, token, expires_at)
-         VALUES ($1, $2, $3)
-         RETURNING ${ONE_TIME_LINK_COLUMNS}`,
-        [input.appointmentId, input.token, input.expiresAt]
+      return requireRow(
+        await executor.queryOne<OneTimeLink>(
+          `INSERT INTO one_time_links (appointment_id, token, expires_at)
+           VALUES ($1, $2, $3)
+           RETURNING ${ONE_TIME_LINK_COLUMNS}`,
+          [input.appointmentId, input.token, input.expiresAt]
+        ),
+        "create one-time link"
       );
-      if (!link) throw new Error("failed to create one-time link");
-      return link;
     },
 
     async recordBookingAttempt(dni) {

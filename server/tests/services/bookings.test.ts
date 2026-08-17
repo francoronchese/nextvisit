@@ -139,7 +139,9 @@ describe("booking service", () => {
     expect(queries.createOneTimeLink).toHaveBeenCalledWith({
       appointmentId: appointment.id,
       token: expect.stringMatching(/^[0-9a-f]{64}$/),
-      expiresAt: appointment.startsAt,
+      expiresAt: new Date(
+        new Date(appointment.startsAt).getTime() + appointment.durationMinutes * 60_000
+      ).toISOString(),
     });
   });
 

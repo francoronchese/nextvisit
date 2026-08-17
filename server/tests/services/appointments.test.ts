@@ -80,7 +80,9 @@ const link: OneTimeLink = {
   appointmentId: appointment.id,
   token,
   createdAt: "2026-11-20T08:00:00.000Z",
-  expiresAt: startsAt,
+  expiresAt: new Date(
+    new Date(startsAt).getTime() + appointment.durationMinutes * 60_000
+  ).toISOString(),
 };
 
 function buildQueries(
@@ -103,7 +105,11 @@ function buildBookingQueries(
 ): Pick<BookingQueries, "createAppointment" | "createOneTimeLink"> {
   return {
     createAppointment: vi.fn(() =>
-      Promise.resolve({ ...appointment, id: "d1eebc99-9c0b-4ef8-bb6d-6bb9bd380a1b", startsAt })
+      Promise.resolve({
+        ...appointment,
+        id: "d1eebc99-9c0b-4ef8-bb6d-6bb9bd380a1b",
+        startsAt: "2026-11-27T13:00:00.000Z",
+      })
     ),
     createOneTimeLink: vi.fn(() =>
       Promise.resolve({
@@ -176,6 +182,17 @@ describe("appointment management service", () => {
     });
   });
 
+  it("rejects a live link once the appointment has ended", async () => {
+    const queries = buildQueries({
+      getAppointmentById: vi.fn(() =>
+        Promise.resolve<Appointment>({ ...appointment, status: "ended" })
+      ),
+    });
+    await expect(getAppointmentByToken(queries, token, NOW)).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
   it("cancels the appointment, burns the link, and returns the cancellation email", async () => {
     const queries = buildQueries();
     const service = buildService(queries);
@@ -228,11 +245,12 @@ describe("appointment management service", () => {
       bookingChannel: "web",
       copayAmount: appointment.copayAmount,
     });
-    const newToken = (bookingQueries.createOneTimeLink as ReturnType<typeof vi.fn>).mock.calls[0]![0]
-      .token as string;
-    expect(newToken).toMatch(/^[0-9a-f]{64}$/);
-    expect(newToken).not.toBe(token);
-    expect(outcome.email.oneTimeLinkUrl).toContain(`/appointments/${newToken}`);
+    const newLinkInput = (bookingQueries.createOneTimeLink as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0] as { token: string; expiresAt: string };
+    expect(newLinkInput.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(newLinkInput.token).not.toBe(token);
+    expect(newLinkInput.expiresAt).toBe("2026-11-27T13:30:00.000Z");
+    expect(outcome.email.oneTimeLinkUrl).toContain(`/appointments/${newLinkInput.token}`);
   });
 
   it("rejects rescheduling when the new slot is already taken", async () => {

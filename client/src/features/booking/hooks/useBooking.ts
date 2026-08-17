@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ApiError, apiPost } from "../../../services/apiClient";
+import { apiPost, isConflictError } from "../../../services/apiClient";
 import type { BookingPayload, BookingResult } from "../booking.types";
 
 export type BookingState = {
@@ -25,7 +25,7 @@ export function useBooking() {
     } catch (error: unknown) {
       // 409 means the slot was taken by someone else since the grid loaded; the
       // grid must refresh. The 3-per-DNI cap is 422 and only needs the message.
-      const slotUnavailable = error instanceof ApiError && error.status === 409;
+      const slotUnavailable = isConflictError(error);
       setState({
         result: null,
         submitting: false,

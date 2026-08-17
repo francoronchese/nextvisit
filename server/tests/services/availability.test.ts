@@ -37,7 +37,6 @@ function buildFakeQueries(overrides: Partial<AvailabilityQueries> = {}): Availab
     getDoctorById: (id) => Promise.resolve(id === DOCTOR_ID ? doctor : undefined),
     listAvailabilityForDoctor: (doctorId) =>
       Promise.resolve(doctorId === DOCTOR_ID ? [availability] : []),
-    getAvailabilityById: (id) => Promise.resolve(id === availability.id ? availability : undefined),
     createAvailability: (input) =>
       Promise.resolve({ id: availability.id, ...input }),
     updateAvailability: (id, input) =>
@@ -45,7 +44,6 @@ function buildFakeQueries(overrides: Partial<AvailabilityQueries> = {}): Availab
     deleteAvailability: (id) => Promise.resolve(id === availability.id),
     listAvailabilityBlocksForDoctor: (doctorId) =>
       Promise.resolve(doctorId === DOCTOR_ID ? [block] : []),
-    getAvailabilityBlockById: (id) => Promise.resolve(id === block.id ? block : undefined),
     createAvailabilityBlock: (input) => Promise.resolve({ id: block.id, ...input }),
     deleteAvailabilityBlock: (id) => Promise.resolve(id === block.id),
     ...overrides,

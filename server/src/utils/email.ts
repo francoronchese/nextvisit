@@ -165,4 +165,10 @@ export function buildOneTimeLinkUrl(token: string): string {
   return `${appUrl()}/appointments/${token}`;
 }
 
+export async function sendBestEffort(action: () => Promise<void>): Promise<void> {
+  await action().catch((error: unknown) => {
+    console.error("failed to send email:", error);
+  });
+}
+
 export const resendNotifier = createResendNotifier();

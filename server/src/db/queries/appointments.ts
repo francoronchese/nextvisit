@@ -9,9 +9,8 @@ import type {
 } from "@nextvisit/shared";
 import type { QueryExecutor } from "../client";
 import { APPOINTMENT_COLUMNS, ONE_TIME_LINK_COLUMNS, PATIENT_COLUMNS } from "./bookings";
-
-const DOCTOR_COLUMNS = `id, specialty_id AS "specialtyId", first_name AS "firstName", last_name AS "lastName"`;
-const TYPE_COLUMNS = `id, specialty_id AS "specialtyId", name, duration_minutes AS "durationMinutes"`;
+import { APPOINTMENT_TYPE_COLUMNS } from "./catalog";
+import { DOCTOR_COLUMNS } from "./doctors";
 
 export type AppointmentManagementQueries = {
   getOneTimeLinkByToken(token: string): Promise<OneTimeLink | undefined>;
@@ -54,7 +53,7 @@ export function createAppointmentManagementQueries(
           appointment.doctorId,
         ]),
         executor.queryOne<AppointmentType>(
-          `SELECT ${TYPE_COLUMNS} FROM appointment_types WHERE id = $1`,
+          `SELECT ${APPOINTMENT_TYPE_COLUMNS} FROM appointment_types WHERE id = $1`,
           [appointment.appointmentTypeId]
         ),
       ]);

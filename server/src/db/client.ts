@@ -20,6 +20,13 @@ export async function queryOne<T>(text: string, params?: unknown[]): Promise<T |
   return rows[0];
 }
 
+export function requireRow<T>(row: T | undefined, what: string): T {
+  if (!row) {
+    throw new Error(`failed to ${what}`);
+  }
+  return row;
+}
+
 export async function withTransaction<T>(
   run: (executor: QueryExecutor) => Promise<T>
 ): Promise<T> {

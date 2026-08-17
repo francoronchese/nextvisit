@@ -12,6 +12,7 @@ import { getAppointmentTypeById } from "../db/queries/catalog";
 import {
   buildOneTimeLinkUrl,
   resendNotifier,
+  sendBestEffort,
   type CancellationEmailInput,
   type RescheduleConfirmationEmailInput,
 } from "../utils/email";
@@ -52,8 +53,8 @@ async function resolveValidLink(
   const link = await queries.getOneTimeLinkByToken(token);
   if (!link) throw notFoundError("appointment link");
   // Single-use (spec): a used or expired link stops working. Expiry equals the
-  // appointment start (expires_at is set to starts_at at creation), and a
-  // cancelled or ended appointment also invalidates the link.
+  // appointment end (expires_at is set to starts_at + duration at creation),
+  // and a cancelled or ended appointment also invalidates the link.
   if (link.usedAt) throw notFoundError("appointment link");
   if (now.getTime() >= new Date(link.expiresAt).getTime()) throw notFoundError("appointment link");
 
@@ -140,10 +141,15 @@ export function createAppointmentManagementService(deps: AppointmentManagementDe
       }
 
       const newToken = randomBytes(32).toString("hex");
+      // Same expiry rule as the original booking: the link lives until the
+      // appointment ends, so reschedule-from-the-grid stays consistent.
+      const expiresAt = new Date(
+        new Date(created.startsAt).getTime() + available.durationMinutes * 60_000
+      ).toISOString();
       await bookingQueries.createOneTimeLink({
         appointmentId: created.id,
         token: newToken,
-        expiresAt: startsAt,
+        expiresAt,
       });
 
       return {
@@ -166,12 +172,6 @@ export type AppointmentManagementService = {
   cancel(token: string, options?: { now?: Date }): Promise<Appointment>;
   reschedule(token: string, input: RescheduleInput, options?: { now?: Date }): Promise<Appointment>;
 };
-
-async function sendBestEffort(action: () => Promise<void>): Promise<void> {
-  await action().catch((error: unknown) => {
-    console.error("failed to send appointment email:", error);
-  });
-}
 
 export const appointmentManagementService: AppointmentManagementService = {
   async getByToken(token, options) {

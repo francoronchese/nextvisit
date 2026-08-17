@@ -9,6 +9,10 @@ export class ApiError extends Error {
   }
 }
 
+export function isConflictError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409;
+}
+
 let staffSessionToken: string | null = null;
 
 export function setStaffSessionToken(token: string): void {

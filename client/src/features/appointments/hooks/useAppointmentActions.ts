@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ApiError, apiPost } from "../../../services/apiClient";
+import { apiPost, isConflictError } from "../../../services/apiClient";
 import type { Appointment, ReschedulePayload } from "../appointments.types";
 
 export type AppointmentActionResult =
@@ -29,9 +29,10 @@ export function useAppointmentActions(token: string | undefined) {
         const appointment = await apiPost<Appointment>(path, body);
         setState({ acting: false, error: null, slotUnavailable: false, result: { kind: action, appointment } });
       } catch (error) {
-        // A 409 means someone else took the reschedule target since the grid
-        // loaded; the grid must refresh, the other errors only need the message.
-        const slotUnavailable = error instanceof ApiError && error.status === 409;
+        // A 409 on reschedule means someone else took the target slot since the
+        // grid loaded; the grid must refresh. The other errors (including the
+        // 409 when the cancellation window is closed) only need the message.
+        const slotUnavailable = action === "rescheduled" && isConflictError(error);
         setState({
           acting: false,
           error: error instanceof Error ? error.message : "Unexpected error",

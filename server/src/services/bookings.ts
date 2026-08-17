@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import type { BookingResponse, ClinicLocalTime } from "@nextvisit/shared";
 import { query, queryOne, withTransaction } from "../db/client";
 import { createBookingQueries, type BookingQueries } from "../db/queries/bookings";
-import { buildOneTimeLinkUrl, resendNotifier, type ConfirmationEmailInput } from "../utils/email";
+import { buildOneTimeLinkUrl, resendNotifier, sendBestEffort, type ConfirmationEmailInput } from "../utils/email";
 import { clinicLocalToUtc } from "@nextvisit/shared";
 import { bookingRateLimitedError, notFoundError, slotUnavailableError, tooManyAppointmentsError } from "../utils/httpErrors";
 import { isConstraintViolation } from "../utils/isConstraintViolation";
@@ -127,10 +127,15 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
       }
 
       const token = randomBytes(32).toString("hex");
+      // The link dies when the appointment ends, not when it starts, so the
+      // patient can still manage the booking right up to the last minute.
+      const expiresAt = new Date(
+        new Date(appointment.startsAt).getTime() + available.durationMinutes * 60_000
+      ).toISOString();
       await queries.createOneTimeLink({
         appointmentId: appointment.id,
         token,
-        expiresAt: startsAt,
+        expiresAt,
       });
 
       return {
@@ -161,11 +166,7 @@ export const bookingService: BookingService = {
     });
 
     // Email is best-effort: a transient Resend failure must not lose the booking.
-    await resendNotifier
-      .sendConfirmationEmail(outcome.confirmationEmail)
-      .catch((error: unknown) => {
-        console.error("failed to send confirmation email:", error);
-      });
+    await sendBestEffort(() => resendNotifier.sendConfirmationEmail(outcome.confirmationEmail));
 
     return outcome.result;
   },

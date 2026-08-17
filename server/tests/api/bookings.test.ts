@@ -118,7 +118,9 @@ describe("booking API", () => {
     );
     expect(linkRows.rowCount).toBe(1);
     expect(linkRows.rows[0]!.token).toMatch(/^[0-9a-f]{64}$/);
-    expect(linkRows.rows[0]!.expires_at.toISOString()).toBe(res.body.appointment.startsAt);
+    expect(linkRows.rows[0]!.expires_at.toISOString()).toBe(
+      new Date(new Date(res.body.appointment.startsAt).getTime() + 30 * 60_000).toISOString()
+    );
 
     const slots = await request(app)
       .get(`/api/doctors/${fixture.doctorId}/slots?typeId=${fixture.typeId}&date=${SLOT_DATE}`)

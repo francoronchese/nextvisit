@@ -3,7 +3,7 @@ import type { QueryExecutor } from "../client";
 import { query, queryOne } from "../client";
 import { utcIso } from "../sql";
 import { getDoctorByIdVia } from "./doctors";
-import { AVAILABILITY_BLOCK_COLUMNS, AVAILABILITY_COLUMNS } from "./availability";
+import { listAvailabilityBlocksForDoctorVia, listAvailabilityForDoctorVia } from "./availability";
 
 export type BookedAppointment = {
   startsAt: string;
@@ -46,23 +46,11 @@ export function createSlotQueries(executor: QueryExecutor): SlotQueries {
     },
 
     listAvailabilityForDoctor(doctorId) {
-      return executor.query<Availability>(
-        `SELECT ${AVAILABILITY_COLUMNS}
-         FROM availabilities
-         WHERE doctor_id = $1
-         ORDER BY weekday, start_time`,
-        [doctorId]
-      );
+      return listAvailabilityForDoctorVia(executor, doctorId);
     },
 
     listAvailabilityBlocksForDoctor(doctorId, fromDate, toDate) {
-      return executor.query<AvailabilityBlock>(
-        `SELECT ${AVAILABILITY_BLOCK_COLUMNS}
-         FROM availability_blocks
-         WHERE doctor_id = $1 AND date >= $2 AND date <= $3
-         ORDER BY date, start_time`,
-        [doctorId, fromDate, toDate]
-      );
+      return listAvailabilityBlocksForDoctorVia(executor, doctorId, fromDate, toDate);
     },
 
     listBookedAppointmentsForDoctor(doctorId, fromInstant, toInstant) {

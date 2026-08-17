@@ -7,6 +7,8 @@ export async function listSpecialties(): Promise<Specialty[]> {
 
 export const HEALTH_INSURANCE_COLUMNS = `id, name, copay_amount::float8 AS "copayAmount"`;
 
+export const APPOINTMENT_TYPE_COLUMNS = `id, specialty_id AS "specialtyId", name, duration_minutes AS "durationMinutes"`;
+
 export async function listHealthInsurances(): Promise<HealthInsurance[]> {
   return query<HealthInsurance>(
     `SELECT ${HEALTH_INSURANCE_COLUMNS}
@@ -23,7 +25,7 @@ export async function listAppointmentTypesForSpecialty(
   specialtyId: string
 ): Promise<AppointmentType[]> {
   return query<AppointmentType>(
-    `SELECT id, specialty_id AS "specialtyId", name, duration_minutes AS "durationMinutes"
+    `SELECT ${APPOINTMENT_TYPE_COLUMNS}
      FROM appointment_types
      WHERE specialty_id = $1
      ORDER BY name`,
@@ -33,7 +35,7 @@ export async function listAppointmentTypesForSpecialty(
 
 export async function getAppointmentTypeById(id: string): Promise<AppointmentType | undefined> {
   return queryOne<AppointmentType>(
-    `SELECT id, specialty_id AS "specialtyId", name, duration_minutes AS "durationMinutes"
+    `SELECT ${APPOINTMENT_TYPE_COLUMNS}
      FROM appointment_types
      WHERE id = $1`,
     [id]

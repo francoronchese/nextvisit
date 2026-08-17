@@ -5,7 +5,6 @@ export { SlotGrid } from "./components/SlotGrid";
 export { useAppointmentTypes, useDoctorsForType, useHealthInsurances, useSpecialties } from "./hooks/useCatalog";
 export { useBooking } from "./hooks/useBooking";
 export { useSlots } from "./hooks/useSlots";
-export { useResource, type ResourceState } from "../../hooks/useResource";
 export type {
   BookingPayload,
   BookingResult,
