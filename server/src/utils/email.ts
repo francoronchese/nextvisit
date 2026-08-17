@@ -122,7 +122,7 @@ export function createResendNotifier(): EmailNotifier {
       return;
     }
     const { error } = await resend.emails.send({
-      from: "Next Visit <no-reply@nextvisit.ar>",
+      from: process.env.RESEND_FROM ?? "Next Visit <no-reply@nextvisit.ar>",
       to: [to],
       subject,
       text,
