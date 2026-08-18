@@ -57,8 +57,8 @@ export function AttendanceManager() {
           <p className="text-lg text-gray-600">No appointments for this day.</p>
         ) : (
           <ul className="space-y-2">
-            {day.data?.map((record) => {
-              const { appointment, patient, doctor, appointmentType } = record;
+            {day.data?.map((entry) => {
+              const { appointment, patient, doctor, appointmentType } = entry;
               const time = utcToClinicParts(new Date(appointment.startsAt)).time;
               const attended = appointment.attendance === "attended";
               return (
@@ -66,7 +66,10 @@ export function AttendanceManager() {
                   <button
                     type="button"
                     disabled={attended}
-                    onClick={() => setSelected(record)}
+                    onClick={() => {
+                      record.clear();
+                      setSelected(entry);
+                    }}
                     aria-pressed={selected?.appointment.id === appointment.id}
                     className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 text-left hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -100,9 +103,8 @@ export function AttendanceManager() {
       )}
       {!selected && record.recorded && (
         <p className="rounded-2xl border-2 border-green-200 bg-green-50 p-4 text-lg text-green-900">
-          {record.recorded.attendance === "attended"
-            ? `${record.recorded.copayPaid ? "Copay paid" : "Copay not paid"} — appointment marked attended.`
-            : "Appointment marked."}
+          {record.recorded.copayPaid ? "Copay paid" : "Copay not paid"} — appointment marked
+          attended.
         </p>
       )}
     </div>

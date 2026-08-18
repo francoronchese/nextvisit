@@ -163,4 +163,39 @@ describe("attendance service", () => {
     ).rejects.toMatchObject({ status: 409 });
     expect(queries.updateAttendance).not.toHaveBeenCalled();
   });
+
+  it("reports an appointment that has not started as such when the DB rejects the write", async () => {
+    const queries = buildQueries({
+      updateAttendance: vi.fn(() => Promise.resolve(undefined)),
+    });
+    const service = createAttendanceService({ queries });
+
+    await expect(
+      service.record(scheduledAppointment.id, {
+        attendance: "attended",
+        copayAmount: 5000,
+        copayPaid: true,
+      })
+    ).rejects.toMatchObject({ status: 409, message: "this appointment has not started yet" });
+  });
+
+  it("turns an appointment cancelled between read and write into a 409, not a 404", async () => {
+    const cancelled: Appointment = { ...scheduledAppointment, status: "cancelled" };
+    const queries = buildQueries({
+      updateAttendance: vi.fn(() => Promise.resolve(undefined)),
+      getAppointmentById: vi
+        .fn()
+        .mockResolvedValueOnce(scheduledAppointment)
+        .mockResolvedValueOnce(cancelled),
+    });
+    const service = createAttendanceService({ queries });
+
+    await expect(
+      service.record(scheduledAppointment.id, {
+        attendance: "attended",
+        copayAmount: 5000,
+        copayPaid: true,
+      })
+    ).rejects.toMatchObject({ status: 409, message: "a cancelled appointment cannot be marked" });
+  });
 });

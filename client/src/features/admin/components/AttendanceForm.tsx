@@ -12,16 +12,24 @@ type AttendanceFormProps = {
 
 export function AttendanceForm({ record, submitting, error, onSubmit }: AttendanceFormProps) {
   const { appointment, patient, doctor, appointmentType, insurance } = record;
-  // Copay comes pre-filled from the patient's health insurance (spec); the
-  // secretary only confirms it or adjusts the amount.
-  const [copayAmount, setCopayAmount] = useState(String(insurance.copayAmount));
+  // The booking flow records the insurance copay on the appointment, so the
+  // amount shown is the one fixed at booking; editing the insurance later must
+  // not silently change what this patient is charged (spec: the appointment
+  // carries the copay). The secretary only confirms or adjusts it.
+  const [copayAmount, setCopayAmount] = useState(String(appointment.copayAmount));
   const [copayPaid, setCopayPaid] = useState(false);
+  const [amountError, setAmountError] = useState<string | null>(null);
   const attended = appointment.attendance === "attended";
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const amount = Number(copayAmount);
-    if (Number.isNaN(amount) || amount < 0) return;
+    const raw = copayAmount.trim();
+    const amount = raw === "" ? NaN : Number(raw);
+    if (!Number.isFinite(amount) || amount < 0) {
+      setAmountError("Enter a valid copay amount");
+      return;
+    }
+    setAmountError(null);
     onSubmit({ attendance: "attended", copayAmount: amount, copayPaid });
   };
 
@@ -48,7 +56,7 @@ export function AttendanceForm({ record, submitting, error, onSubmit }: Attendan
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block">
               <span className="mb-1 block text-lg text-gray-700">
-                Copay (pre-filled from {insurance.name})
+                Copay (booked from {insurance.name})
               </span>
               <input
                 type="number"
@@ -56,8 +64,14 @@ export function AttendanceForm({ record, submitting, error, onSubmit }: Attendan
                 step="0.01"
                 value={copayAmount}
                 onChange={(event) => setCopayAmount(event.target.value)}
+                aria-invalid={amountError !== null}
                 className="w-full rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
               />
+              {amountError && (
+                <p role="alert" className="mt-1 text-lg text-red-700">
+                  {amountError}
+                </p>
+              )}
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-lg text-gray-900">
               <input

@@ -22,6 +22,11 @@ const DOCTOR = {
 // 2026-09-07 in the clinic timezone (UTC-3): a 12:00Z start belongs to that
 // clinic-local day.
 const STARTS_AT = "2026-09-07T12:00:00.000Z";
+// Attendance is recorded on arrival (ADR-0004), so the record tests book
+// appointments that have already started; the future-reject test books one that
+// has not. Relative dates keep both cases stable regardless of when tests run.
+const PAST_STARTS_AT = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+const FUTURE_STARTS_AT = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
 async function seedUsers(): Promise<void> {
   await pool.query(
@@ -91,7 +96,7 @@ describe("secretary attendance & copay API", () => {
     const fixture = await seedBaseFixture(pool, "att-flip");
     const appointmentId = await insertAppointment(pool, {
       ...fixture,
-      startsAt: STARTS_AT,
+      startsAt: PAST_STARTS_AT,
       status: "ended",
       attendance: "no_show",
     });
@@ -125,7 +130,10 @@ describe("secretary attendance & copay API", () => {
 
   it("ends and marks attended a scheduled appointment whose patient just arrived", async () => {
     const fixture = await seedBaseFixture(pool, "att-arrive");
-    const appointmentId = await insertAppointment(pool, { ...fixture, startsAt: STARTS_AT });
+    const appointmentId = await insertAppointment(pool, {
+      ...fixture,
+      startsAt: PAST_STARTS_AT,
+    });
     const token = await staffToken(SECRETARY.email, SECRETARY.password);
 
     const res = await request(app)
@@ -141,6 +149,22 @@ describe("secretary attendance & copay API", () => {
       copayAmount: 5000,
       copayPaid: false,
     });
+  });
+
+  it("rejects marking a scheduled appointment attended before it starts", async () => {
+    const fixture = await seedBaseFixture(pool, "att-future");
+    const appointmentId = await insertAppointment(pool, {
+      ...fixture,
+      startsAt: FUTURE_STARTS_AT,
+    });
+    const token = await staffToken(SECRETARY.email, SECRETARY.password);
+
+    const res = await request(app)
+      .patch(`/api/admin/appointments/${appointmentId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ attendance: "attended", copayAmount: 5000, copayPaid: true })
+      .expect(409);
+    expect(res.body).toEqual({ error: "this appointment has not started yet" });
   });
 
   it("rejects marking attendance on a cancelled appointment", async () => {

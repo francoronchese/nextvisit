@@ -5,7 +5,7 @@ import {
   createAppointmentManagementQueries,
   type AppointmentManagementQueries,
 } from "../db/queries/appointments";
-import { appointmentCancelledError, notFoundError } from "../utils/httpErrors";
+import { appointmentCancelledError, appointmentNotStartedError, notFoundError } from "../utils/httpErrors";
 
 export type AttendanceInput = {
   // Always "attended": no-show is set automatically and only flipped back
@@ -46,8 +46,16 @@ export function createAttendanceService(deps: AttendanceServiceDeps): Attendance
       if (appointment.status === "cancelled") throw appointmentCancelledError();
 
       const updated = await queries.updateAttendance(id, input);
-      if (!updated) throw notFoundError("appointment");
-      return updated;
+      if (updated) return updated;
+
+      // The UPDATE matched nothing although the appointment existed a moment
+      // ago: it was cancelled or had not started in between. Re-read to answer
+      // with the honest error instead of a misleading 404.
+      const latest = await queries.getAppointmentById(id);
+      if (!latest) throw notFoundError("appointment");
+      if (latest.status === "cancelled") throw appointmentCancelledError();
+      if (new Date(latest.startsAt).getTime() > Date.now()) throw appointmentNotStartedError();
+      throw notFoundError("appointment");
     },
   };
 }

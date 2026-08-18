@@ -40,5 +40,11 @@ export function useRecordAttendance() {
     }
   }, []);
 
-  return { ...state, record };
+  // Drops the previous success so the form opens again for the next
+  // appointment of the day.
+  const clear = useCallback(() => {
+    setState({ submitting: false, error: null, recorded: null });
+  }, []);
+
+  return { ...state, record, clear };
 }

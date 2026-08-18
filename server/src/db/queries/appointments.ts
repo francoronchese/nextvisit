@@ -152,13 +152,14 @@ export function createAppointmentManagementQueries(
 
     // Recording that the patient showed up ends the appointment: the secretary
     // marks a patient who is here now, so the scheduled slot is over either
-    // way. Only scheduled/ended appointments accept the update; a cancelled one
-    // never gets attendance (ADR-0004).
+    // way. Only started appointments accept the update — attendance is recorded
+    // on arrival, never before the slot begins (ADR-0004). A cancelled one
+    // never gets attendance.
     updateAttendance(id, input) {
       return executor.queryOne<Appointment>(
         `UPDATE appointments
          SET status = 'ended', attendance = $2, copay_amount = $3, copay_paid = $4
-         WHERE id = $1 AND status <> 'cancelled'
+         WHERE id = $1 AND status <> 'cancelled' AND starts_at <= now()
          RETURNING ${APPOINTMENT_COLUMNS}`,
         [id, input.attendance, input.copayAmount, input.copayPaid]
       );

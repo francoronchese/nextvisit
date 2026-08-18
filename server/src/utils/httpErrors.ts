@@ -30,3 +30,7 @@ export function cancellationWindowClosedError(): HttpError {
 export function appointmentCancelledError(): HttpError {
   return httpError(409, "a cancelled appointment cannot be marked", "AppointmentCancelledError");
 }
+
+export function appointmentNotStartedError(): HttpError {
+  return httpError(409, "this appointment has not started yet", "AppointmentNotStartedError");
+}

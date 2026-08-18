@@ -144,10 +144,10 @@ describe("secretary attendance & copay", () => {
     expect(
       screen.getByText(/This patient was marked no-show automatically/)
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Copay \(pre-filled from IOMA\)/)).toHaveValue(5000);
+    expect(screen.getByLabelText(/Copay \(booked from IOMA\)/)).toHaveValue(5000);
 
-    await user.clear(screen.getByLabelText(/Copay \(pre-filled from IOMA\)/));
-    await user.type(screen.getByLabelText(/Copay \(pre-filled from IOMA\)/), "4500");
+    await user.clear(screen.getByLabelText(/Copay \(booked from IOMA\)/));
+    await user.type(screen.getByLabelText(/Copay \(booked from IOMA\)/), "4500");
     await user.click(screen.getByLabelText("Copay paid"));
     await user.click(screen.getByRole("button", { name: "Mark attended & record copay" }));
 
@@ -166,5 +166,61 @@ describe("secretary attendance & copay", () => {
       copayAmount: 4500,
       copayPaid: true,
     });
+  });
+
+  it("pre-fills from the booked copay on the appointment, not the live insurance amount", async () => {
+    const record = detailRecord({ attendance: "no_show", status: "ended" });
+    const divergent = {
+      ...record,
+      appointment: { ...record.appointment, copayAmount: 3500 },
+    };
+    fetchMock.mockImplementation((input, init) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "/api/admin/login" && init?.method === "POST") {
+        return Promise.resolve(jsonResponse({ token: "signed-token", user: secretaryUser }));
+      }
+      if (url.startsWith("/api/admin/appointments?date=")) {
+        return Promise.resolve(jsonResponse([divergent]));
+      }
+      return Promise.resolve(jsonResponse({ error: "not found" }, 404));
+    });
+
+    const user = userEvent.setup();
+    await signInAndOpenAttendance(user);
+    await user.click(await screen.findByRole("button", { name: /Ana Pérez/ }));
+
+    // The insurance copay is 5000 but the appointment was booked at 3500; the
+    // form shows the booked amount (spec: the appointment carries the copay).
+    expect(screen.getByLabelText(/Copay \(booked from IOMA\)/)).toHaveValue(3500);
+  });
+
+  it("reopens the attendance form for the next appointment after a record", async () => {
+    const user = userEvent.setup();
+    await signInAndOpenAttendance(user);
+
+    await user.click(await screen.findByRole("button", { name: /Ana Pérez/ }));
+    await user.click(screen.getByRole("button", { name: "Mark attended & record copay" }));
+    await screen.findByText(/appointment marked attended/);
+
+    await user.click(screen.getByRole("button", { name: /Ana Pérez/ }));
+
+    expect(
+      await screen.findByRole("button", { name: "Mark attended & record copay" })
+    ).toBeInTheDocument();
+  });
+
+  it("rejects an empty copay amount without submitting", async () => {
+    const user = userEvent.setup();
+    await signInAndOpenAttendance(user);
+
+    await user.click(await screen.findByRole("button", { name: /Ana Pérez/ }));
+    await user.clear(screen.getByLabelText(/Copay \(booked from IOMA\)/));
+    await user.click(screen.getByRole("button", { name: "Mark attended & record copay" }));
+
+    expect(await screen.findByText("Enter a valid copay amount")).toBeInTheDocument();
+    const patchCalls = fetchMock.mock.calls.filter(
+      ([url, init]) => String(url).includes("/api/admin/appointments/") && init?.method === "PATCH"
+    );
+    expect(patchCalls).toHaveLength(0);
   });
 });

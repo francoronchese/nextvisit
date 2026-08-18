@@ -20,6 +20,8 @@ export const dateQuerySchema = z.object({
 // the attendance value is always "attended".
 export const recordAttendanceSchema = z.object({
   attendance: z.literal("attended"),
-  copayAmount: z.number().nonnegative(),
+  // finite rejects Infinity/NaN; max mirrors the numeric(10,2) column so a
+  // bogus huge amount can never surface as a Postgres error.
+  copayAmount: z.number().nonnegative().finite().max(99_999_999.99),
   copayPaid: z.boolean(),
 });
