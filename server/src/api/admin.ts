@@ -10,7 +10,8 @@ import {
   getDoctors,
   updateAvailability,
 } from "../controllers/availability";
-import { requireAdminAuth } from "../middlewares/adminAuth";
+import { createAdminBooking } from "../controllers/bookings";
+import { requireAdminAuth, requireRole } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const adminRouter = Router();
@@ -28,3 +29,4 @@ adminRouter.delete("/admin/availability/:id", asyncHandler(deleteAvailability));
 adminRouter.get("/admin/availability-blocks", asyncHandler(getAvailabilityBlocks));
 adminRouter.post("/admin/availability-blocks", asyncHandler(createAvailabilityBlock));
 adminRouter.delete("/admin/availability-blocks/:id", asyncHandler(deleteAvailabilityBlock));
+adminRouter.post("/admin/appointments", requireRole("secretary"), asyncHandler(createAdminBooking));

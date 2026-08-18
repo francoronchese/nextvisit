@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { BookingResponse, ClinicLocalTime } from "@nextvisit/shared";
+import type { BookingChannel, BookingResponse, ClinicLocalTime } from "@nextvisit/shared";
 import { query, queryOne, withTransaction } from "../db/client";
 import { createBookingQueries, type BookingQueries } from "../db/queries/bookings";
 import { buildOneTimeLinkUrl, resendNotifier, sendBestEffort, type ConfirmationEmailInput } from "../utils/email";
@@ -18,11 +18,16 @@ export type BookAppointmentInput = {
   lastName: string;
   healthInsuranceId: string;
   phone: string;
-  email: string;
+  // Email is required on web bookings and optional when the secretary books on
+  // behalf (CONTEXT.md: Booking Channel); the confirmation email goes out only
+  // when the patient gave one.
+  email?: string;
   doctorId: string;
   typeId: string;
   date: string;
   startTime: string;
+  // Web bookings are always "web"; the secretary passes "front_desk" or "phone".
+  bookingChannel?: BookingChannel;
 };
 
 export type BookingResult = BookingResponse;
@@ -93,14 +98,17 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
         throw tooManyAppointmentsError();
       }
 
+      const existing = await queries.getPatientByDni(input.dni);
       const patientFields = {
         firstName: input.firstName,
         lastName: input.lastName,
         healthInsuranceId: input.healthInsuranceId,
         phone: input.phone,
-        email: input.email,
+        // A secretary booking without an email must not wipe the patient's
+        // stored one (spec: emails go out whenever the patient provided an
+        // email, regardless of channel). New patients simply have no email.
+        email: input.email ?? existing?.email ?? undefined,
       };
-      const existing = await queries.getPatientByDni(input.dni);
       const patient = existing
         ? await queries.updatePatient(existing.id, patientFields)
         : await queries.createPatient({ ...patientFields, dni: input.dni });
@@ -114,7 +122,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
           appointmentTypeId: input.typeId,
           startsAt,
           durationMinutes: available.durationMinutes,
-          bookingChannel: "web",
+          bookingChannel: input.bookingChannel ?? "web",
           copayAmount: insurance.copayAmount,
         });
       } catch (error) {

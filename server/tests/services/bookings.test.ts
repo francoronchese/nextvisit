@@ -266,3 +266,84 @@ describe("booking service", () => {
     await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 404 });
   });
 });
+
+describe("booking service — secretary booking on behalf", () => {
+  it("books through the front desk, recording the channel on the appointment", async () => {
+    const queries = buildQueries();
+    const service = buildService(queries);
+
+    await service.book({ ...bookingInput, bookingChannel: "front_desk" }, { now: NOW });
+
+    expect(queries.createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingChannel: "front_desk" })
+    );
+  });
+
+  it("books by phone, recording the channel on the appointment", async () => {
+    const queries = buildQueries();
+    const service = buildService(queries);
+
+    await service.book({ ...bookingInput, bookingChannel: "phone" }, { now: NOW });
+
+    expect(queries.createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingChannel: "phone" })
+    );
+  });
+
+  it("defaults to the web channel when none is given", async () => {
+    const queries = buildQueries();
+    const service = buildService(queries);
+
+    await service.book(bookingInput, { now: NOW });
+
+    expect(queries.createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingChannel: "web" })
+    );
+  });
+
+  it("succeeds for a patient without an email and produces no email recipient", async () => {
+    const queries = buildQueries();
+    const service = buildService(queries);
+    const noEmailInput = { ...bookingInput, email: undefined };
+
+    const outcome = await service.book(noEmailInput, { now: NOW });
+
+    expect(outcome.result.patient.email).toBeUndefined();
+    expect(outcome.confirmationEmail.to).toBe("");
+    expect(queries.createPatient).toHaveBeenCalledWith(
+      expect.objectContaining({ email: undefined })
+    );
+  });
+
+  it("sends the confirmation email when the front-desk patient provides one", async () => {
+    const service = buildService(buildQueries());
+
+    const outcome = await service.book(
+      { ...bookingInput, bookingChannel: "front_desk" },
+      { now: NOW }
+    );
+
+    expect(outcome.confirmationEmail.to).toBe(patientInput.email);
+  });
+
+  it("keeps a previously stored email when a front-desk booking gives none", async () => {
+    const queries = buildQueries({
+      getPatientByDni: vi.fn(() => Promise.resolve(existingPatient)),
+    });
+    const service = buildService(queries);
+
+    const outcome = await service.book(
+      { ...bookingInput, email: undefined, bookingChannel: "front_desk" },
+      { now: NOW }
+    );
+
+    expect(queries.updatePatient).toHaveBeenCalledWith(existingPatient.id, {
+      firstName: patientInput.firstName,
+      lastName: patientInput.lastName,
+      healthInsuranceId: patientInput.healthInsuranceId,
+      phone: patientInput.phone,
+      email: existingPatient.email,
+    });
+    expect(outcome.confirmationEmail.to).toBe(existingPatient.email);
+  });
+});

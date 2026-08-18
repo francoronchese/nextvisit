@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import type { UserRole } from "@nextvisit/shared";
 import { authService } from "../services/auth";
 
 export async function requireAdminAuth(
@@ -19,4 +20,16 @@ export async function requireAdminAuth(
   }
   req.user = user;
   next();
+}
+
+// RBAC gate for staff-only capabilities (spec: doctor panel is read-only, so a
+// doctor session must not create appointments). Runs after requireAdminAuth.
+export function requireRole(...roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    next();
+  };
 }

@@ -1,4 +1,4 @@
-import type { Appointment, HealthInsurance, OneTimeLink, Patient } from "@nextvisit/shared";
+import type { Appointment, BookingChannel, HealthInsurance, OneTimeLink, Patient } from "@nextvisit/shared";
 import { requireRow, type QueryExecutor } from "../client";
 import { utcIso } from "../sql";
 import { HEALTH_INSURANCE_COLUMNS } from "./catalog";
@@ -18,7 +18,7 @@ export type NewAppointment = {
   appointmentTypeId: string;
   startsAt: string;
   durationMinutes: number;
-  bookingChannel: "web";
+  bookingChannel: BookingChannel;
   copayAmount: number;
 };
 

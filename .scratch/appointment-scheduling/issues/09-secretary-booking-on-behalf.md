@@ -4,12 +4,12 @@
 
 **Blocked by:** 02, 03, 04, 07
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `POST /api/admin/appointments` creates booking under secretary session
-- [ ] Secretary fills patient data (email optional for front-desk patients)
-- [ ] Same anti-spam rules apply (3 per DNI cap)
-- [ ] Confirmation email sent if email provided (same as web bookings)
-- [ ] UI: secretary booking form in `features/admin/` — specialty → type → doctor → slot → patient data → confirm
-- [ ] Service-layer unit tests: secretary booking succeeds, email sent only when provided
-- [ ] API contract test: secretary books and confirmation email triggered
+- [x] `POST /api/admin/appointments` creates booking under secretary session
+- [x] Secretary fills patient data (email optional for front-desk patients)
+- [x] Same anti-spam rules apply (3 per DNI cap)
+- [x] Confirmation email sent if email provided (same as web bookings)
+- [x] UI: secretary booking form in `features/admin/` — specialty → type → doctor → slot → patient data → confirm
+- [x] Service-layer unit tests: secretary booking succeeds, email sent only when provided
+- [x] API contract test: secretary books and confirmation email triggered
