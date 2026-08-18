@@ -47,7 +47,7 @@ describe("appointments — no-overlap constraint", () => {
     await insertAppointment(pool, { ...fixture, startsAt: "2026-09-01T10:00:00Z" });
     await expect(
       insertAppointment(pool, { ...fixture, startsAt: "2026-09-01T10:30:00Z" })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(expect.any(String));
   });
 
   it("rejects a concurrent second booking for the same slot", async () => {
@@ -72,7 +72,7 @@ describe("appointments — no-overlap constraint", () => {
     await insertAppointment(pool, { ...fixture, startsAt: "2026-09-01T10:00:00Z" });
     await expect(
       insertAppointment(pool, { ...other, startsAt: "2026-09-01T10:00:00Z" })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(expect.any(String));
   });
 
   it("releases the slot once the appointment is cancelled", async () => {
@@ -85,6 +85,6 @@ describe("appointments — no-overlap constraint", () => {
     );
     await expect(
       insertAppointment(pool, { ...fixture, startsAt })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual(expect.any(String));
   });
 });

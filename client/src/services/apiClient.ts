@@ -96,6 +96,18 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   );
 }
 
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(
+    path,
+    {
+      method: "PATCH",
+      headers: headersFor(path, { "Content-Type": "application/json" }),
+      body: JSON.stringify(body),
+    },
+    true
+  );
+}
+
 export async function apiDelete(path: string): Promise<void> {
   await request(path, { method: "DELETE", headers: headersFor(path) }, false);
 }

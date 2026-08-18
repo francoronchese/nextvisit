@@ -1,6 +1,7 @@
 import type {
   Appointment,
   AppointmentDetail,
+  AppointmentDetailWithInsurance,
   AppointmentType,
   Doctor,
   OneTimeLink,
@@ -8,6 +9,7 @@ import type {
   Specialty,
 } from "@nextvisit/shared";
 import type { QueryExecutor } from "../client";
+import { utcIso } from "../sql";
 import { APPOINTMENT_COLUMNS, ONE_TIME_LINK_COLUMNS, PATIENT_COLUMNS } from "./bookings";
 import { APPOINTMENT_TYPE_COLUMNS } from "./catalog";
 import { DOCTOR_COLUMNS } from "./doctors";
@@ -18,6 +20,11 @@ export type AppointmentManagementQueries = {
   getAppointmentDetail(id: string): Promise<AppointmentDetail | undefined>;
   markOneTimeLinkUsed(id: string): Promise<void>;
   cancelAppointment(id: string): Promise<Appointment | undefined>;
+  listAppointmentsForDay(fromUtc: string, toUtc: string): Promise<AppointmentDetailWithInsurance[]>;
+  updateAttendance(
+    id: string,
+    input: { attendance: "attended"; copayAmount: number; copayPaid: boolean }
+  ): Promise<Appointment | undefined>;
 };
 
 export function createAppointmentManagementQueries(
@@ -80,6 +87,80 @@ export function createAppointmentManagementQueries(
          WHERE id = $1 AND status = 'scheduled'
          RETURNING ${APPOINTMENT_COLUMNS}`,
         [id]
+      );
+    },
+
+    // One joined query assembles the nested secretary view (appointment +
+    // patient + doctor + specialty + type + insurance) so a whole day loads in
+    // a single round trip. json_build_object hands back the nested shape
+    // directly; pg parses json columns into plain objects.
+    listAppointmentsForDay(fromUtc, toUtc) {
+      return executor.query<AppointmentDetailWithInsurance>(
+        `SELECT
+           json_build_object(
+             'id', a.id,
+             'patientId', a.patient_id,
+             'doctorId', a.doctor_id,
+             'appointmentTypeId', a.appointment_type_id,
+             'startsAt', ${utcIso("a.starts_at")},
+             'durationMinutes', a.duration_minutes,
+             'bookingChannel', a.booking_channel,
+             'status', a.status,
+             'attendance', a.attendance,
+             'copayAmount', a.copay_amount::float8,
+             'copayPaid', a.copay_paid,
+             'createdAt', ${utcIso("a.created_at")}
+           ) AS appointment,
+           json_build_object(
+             'id', p.id,
+             'dni', p.dni,
+             'firstName', p.first_name,
+             'lastName', p.last_name,
+             'healthInsuranceId', p.health_insurance_id,
+             'phone', p.phone,
+             'email', p.email
+           ) AS patient,
+           json_build_object(
+             'id', d.id,
+             'specialtyId', d.specialty_id,
+             'firstName', d.first_name,
+             'lastName', d.last_name
+           ) AS doctor,
+           json_build_object('id', s.id, 'name', s.name) AS specialty,
+           json_build_object(
+             'id', at.id,
+             'specialtyId', at.specialty_id,
+             'name', at.name,
+             'durationMinutes', at.duration_minutes
+           ) AS "appointmentType",
+           json_build_object(
+             'id', hi.id,
+             'name', hi.name,
+             'copayAmount', hi.copay_amount::float8
+           ) AS insurance
+         FROM appointments a
+         JOIN patients p ON p.id = a.patient_id
+         JOIN doctors d ON d.id = a.doctor_id
+         JOIN specialties s ON s.id = d.specialty_id
+         JOIN appointment_types at ON at.id = a.appointment_type_id
+         JOIN health_insurances hi ON hi.id = p.health_insurance_id
+         WHERE a.starts_at >= $1 AND a.starts_at < $2 AND a.status <> 'cancelled'
+         ORDER BY a.starts_at`,
+        [fromUtc, toUtc]
+      );
+    },
+
+    // Recording that the patient showed up ends the appointment: the secretary
+    // marks a patient who is here now, so the scheduled slot is over either
+    // way. Only scheduled/ended appointments accept the update; a cancelled one
+    // never gets attendance (ADR-0004).
+    updateAttendance(id, input) {
+      return executor.queryOne<Appointment>(
+        `UPDATE appointments
+         SET status = 'ended', attendance = $2, copay_amount = $3, copay_paid = $4
+         WHERE id = $1 AND status <> 'cancelled'
+         RETURNING ${APPOINTMENT_COLUMNS}`,
+        [id, input.attendance, input.copayAmount, input.copayPaid]
       );
     },
   };

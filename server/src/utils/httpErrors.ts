@@ -26,3 +26,7 @@ export function invalidCredentialsError(): HttpError {
 export function cancellationWindowClosedError(): HttpError {
   return httpError(409, "the cancellation window has closed", "CancellationWindowClosedError");
 }
+
+export function appointmentCancelledError(): HttpError {
+  return httpError(409, "a cancelled appointment cannot be marked", "AppointmentCancelledError");
+}

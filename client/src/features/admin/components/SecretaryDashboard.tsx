@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import type { User } from "@nextvisit/shared";
+import { AttendanceManager } from "./AttendanceManager";
 import { AvailabilityManager } from "./AvailabilityManager";
 import { SecretaryBookingForm } from "./SecretaryBookingForm";
 
@@ -8,8 +9,20 @@ type SecretaryDashboardProps = {
   onLogout: () => void;
 };
 
-const TABS = ["availability", "booking"] as const;
+const TABS = ["availability", "booking", "attendance"] as const;
 type SecretaryTab = (typeof TABS)[number];
+
+const TAB_LABELS: Record<SecretaryTab, string> = {
+  availability: "Availability",
+  booking: "Book an appointment",
+  attendance: "Attendance",
+};
+
+const TAB_CONTENT: Record<SecretaryTab, () => ReactElement> = {
+  availability: () => <AvailabilityManager />,
+  booking: () => <SecretaryBookingForm />,
+  attendance: () => <AttendanceManager />,
+};
 
 export function SecretaryDashboard({ user, onLogout }: SecretaryDashboardProps) {
   const [tab, setTab] = useState<SecretaryTab>("availability");
@@ -41,12 +54,12 @@ export function SecretaryDashboard({ user, onLogout }: SecretaryDashboardProps) 
                 : "border-2 border-gray-200 text-gray-900 hover:border-blue-400"
             }`}
           >
-            {value === "availability" ? "Availability" : "Book an appointment"}
+            {TAB_LABELS[value]}
           </button>
         ))}
       </nav>
 
-      {tab === "availability" ? <AvailabilityManager /> : <SecretaryBookingForm />}
+      {TAB_CONTENT[tab]()}
     </div>
   );
 }

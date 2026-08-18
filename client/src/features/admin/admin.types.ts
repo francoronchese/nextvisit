@@ -1,6 +1,7 @@
 import type { BlockReason, BookingChannel, BookingResponse, User } from "@nextvisit/shared";
 
 export type {
+  AppointmentDetailWithInsurance,
   AppointmentType,
   Availability,
   AvailabilityBlock,

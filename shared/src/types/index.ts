@@ -11,6 +11,7 @@ export * from "./patient";
 export * from "./appointment";
 export * from "./oneTimeLink";
 export * from "./appointmentDetail";
+export * from "./appointmentDetailWithInsurance";
 export * from "./bookingResponse";
 export * from "./user";
 export * from "./bookingAttempt";

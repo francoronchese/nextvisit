@@ -43,7 +43,7 @@ export async function seedBaseFixture(pool: Pool, prefix: string): Promise<BaseF
     );
     const patient = await client.query(
       "INSERT INTO patients (dni, first_name, last_name, health_insurance_id, phone) VALUES ($1, $2, $3, $4, $5) RETURNING id",
-      [`${Date.now()}`, "Test", "Patient", insuranceId, "555-0100"]
+      [`${(Date.now() % 90_000_000) + 10_000_000}`, "Test", "Patient", insuranceId, "555-0100"]
     );
     const patientId = patient.rows[0].id as string;
     return { specialtyId, insuranceId, doctorId, typeId, patientId };
@@ -76,11 +76,12 @@ export async function insertAppointment(
     status?: string;
     attendance?: string;
   }
-): Promise<void> {
-  await pool.query(
+): Promise<string> {
+  const result = await pool.query(
     `INSERT INTO appointments
       (patient_id, doctor_id, appointment_type_id, starts_at, duration_minutes, booking_channel, copay_amount, status, attendance)
-     VALUES ($1, $2, $3, $4, 30, 'web', 100, $5, $6)`,
+     VALUES ($1, $2, $3, $4, 30, 'web', 100, $5, $6)
+     RETURNING id`,
     [
       args.patientId,
       args.doctorId,
@@ -90,4 +91,5 @@ export async function insertAppointment(
       args.attendance ?? "pending",
     ]
   );
+  return result.rows[0].id as string;
 }

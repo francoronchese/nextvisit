@@ -96,6 +96,8 @@ function buildQueries(
     cancelAppointment: vi.fn(() =>
       Promise.resolve<Appointment>({ ...appointment, status: "cancelled" })
     ),
+    listAppointmentsForDay: vi.fn(() => Promise.resolve([])),
+    updateAttendance: vi.fn(() => Promise.resolve(appointment)),
     ...overrides,
   };
 }

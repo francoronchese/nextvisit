@@ -11,6 +11,7 @@ import {
   updateAvailability,
 } from "../controllers/availability";
 import { createSecretaryBooking } from "../controllers/bookings";
+import { getAppointmentsByDate, recordAttendance } from "../controllers/adminAppointments";
 import { requireAdminAuth, requireRole } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -30,3 +31,5 @@ adminRouter.get("/admin/availability-blocks", asyncHandler(getAvailabilityBlocks
 adminRouter.post("/admin/availability-blocks", asyncHandler(createAvailabilityBlock));
 adminRouter.delete("/admin/availability-blocks/:id", asyncHandler(deleteAvailabilityBlock));
 adminRouter.post("/admin/appointments", requireRole("secretary"), asyncHandler(createSecretaryBooking));
+adminRouter.get("/admin/appointments", requireRole("secretary"), asyncHandler(getAppointmentsByDate));
+adminRouter.patch("/admin/appointments/:id", requireRole("secretary"), asyncHandler(recordAttendance));
