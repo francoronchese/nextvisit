@@ -105,8 +105,9 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
         healthInsuranceId: input.healthInsuranceId,
         phone: input.phone,
         // A secretary booking without an email must not wipe the patient's
-        // stored one (spec: emails go out whenever the patient provided an
-        // email, regardless of channel). New patients simply have no email.
+        // stored one — the address stays on file for future interactions. But
+        // per spec the confirmation only goes out when this booking provided
+        // an email.
         email: input.email ?? existing?.email ?? undefined,
       };
       const patient = existing
@@ -149,7 +150,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
       return {
         result: { patient, appointment },
         confirmationEmail: {
-          to: patient.email ?? "",
+          to: input.email ?? "",
           patient,
           appointment,
           oneTimeLinkUrl: buildOneTimeLinkUrl(token),

@@ -6,6 +6,7 @@ export { PatientForm } from "./components/PatientForm";
 export { SlotGrid } from "./components/SlotGrid";
 export { StepCard } from "./components/StepCard";
 export type { PatientFieldsErrors } from "./components/PatientFields";
+export { validatePatientFields } from "./components/PatientFields";
 export { useAppointmentTypes, useDoctorsForType, useHealthInsurances, useSpecialties } from "./hooks/useCatalog";
 export { useBooking } from "./hooks/useBooking";
 export { useSlots } from "./hooks/useSlots";

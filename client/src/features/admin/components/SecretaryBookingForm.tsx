@@ -11,7 +11,7 @@ import {
   useSlots,
 } from "../../booking";
 import type { AppointmentType, Doctor, SecretaryChannel, Slot, Specialty } from "../admin.types";
-import { useAdminBooking } from "../hooks/useAdminBooking";
+import { useSecretaryBooking } from "../hooks/useSecretaryBooking";
 import { SecretaryPatientForm } from "./SecretaryPatientForm";
 import type { SecretaryPatientData } from "../admin.types";
 
@@ -22,30 +22,37 @@ type Selections = {
   slot?: Slot;
 };
 
-const STEP = {
-  SPECIALTY: 0,
-  TYPE: 1,
-  DOCTOR: 2,
-  SLOT: 3,
-  PATIENT: 4,
-  CONFIRMATION: 5,
-} as const;
+type SecretaryStep = "specialty" | "type" | "doctor" | "slot" | "patient" | "confirmation";
 
-const STEP_LABELS = ["Specialty", "Appointment type", "Doctor", "Slot", "Patient", "Confirmed"];
+const STEP_ORDER: SecretaryStep[] = ["specialty", "type", "doctor", "slot", "patient", "confirmation"];
 
-function StepIndicator({ current }: { current: number }) {
+const STEP_LABELS: Record<SecretaryStep, string> = {
+  specialty: "Specialty",
+  type: "Appointment type",
+  doctor: "Doctor",
+  slot: "Slot",
+  patient: "Patient",
+  confirmation: "Confirmed",
+};
+
+function StepIndicator({ current }: { current: SecretaryStep }) {
+  const currentIndex = STEP_ORDER.indexOf(current);
   return (
     <ol aria-label="Progress" className="mb-8 flex flex-wrap items-center justify-center gap-2">
-      {STEP_LABELS.map((label, index) => {
+      {STEP_ORDER.map((step, index) => {
         const state =
-          index === current ? "bg-blue-700 text-white" : index < current ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500";
+          index === currentIndex
+            ? "bg-blue-700 text-white"
+            : index < currentIndex
+              ? "bg-blue-100 text-blue-800"
+              : "bg-gray-100 text-gray-500";
         return (
-          <li key={label} className="flex items-center gap-2">
+          <li key={step} className="flex items-center gap-2">
             <span
-              aria-current={index === current ? "step" : undefined}
+              aria-current={index === currentIndex ? "step" : undefined}
               className={`rounded-full px-3 py-1 text-sm font-semibold ${state}`}
             >
-              {index + 1}. {label}
+              {index + 1}. {STEP_LABELS[step]}
             </span>
           </li>
         );
@@ -55,10 +62,10 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 export function SecretaryBookingForm() {
-  const [step, setStep] = useState<number>(STEP.SPECIALTY);
+  const [step, setStep] = useState<SecretaryStep>("specialty");
   const [patient, setPatient] = useState<SecretaryPatientData>();
   const [selections, setSelections] = useState<Selections>({});
-  const booking = useAdminBooking();
+  const booking = useSecretaryBooking();
 
   const specialties = useSpecialties();
   const types = useAppointmentTypes(selections.specialty?.id);
@@ -70,14 +77,14 @@ export function SecretaryBookingForm() {
   useEffect(() => {
     if (booking.slotUnavailable) {
       setSelections((previous) => ({ ...previous, slot: undefined }));
-      setStep(STEP.SLOT);
+      setStep("slot");
       slots.retry();
     }
   }, [booking.slotUnavailable]);
 
   useEffect(() => {
     if (booking.result) {
-      setStep(STEP.CONFIRMATION);
+      setStep("confirmation");
     }
   }, [booking.result]);
 
@@ -85,7 +92,7 @@ export function SecretaryBookingForm() {
     setSelections((previous) =>
       previous.specialty?.id === specialty.id ? { ...previous, specialty } : { specialty }
     );
-    setStep(STEP.TYPE);
+    setStep("type");
   };
 
   const selectType = (type: AppointmentType) => {
@@ -94,24 +101,24 @@ export function SecretaryBookingForm() {
         ? { ...previous, type }
         : { ...previous, type, doctor: undefined, slot: undefined }
     );
-    setStep(STEP.DOCTOR);
+    setStep("doctor");
   };
 
   const selectDoctor = (doctor: Doctor) => {
     setSelections((previous) => ({ ...previous, doctor, slot: undefined }));
-    setStep(STEP.SLOT);
+    setStep("slot");
   };
 
   const selectSlot = (slot: Slot) => {
     setSelections((previous) => ({ ...previous, slot }));
-    setStep(STEP.PATIENT);
+    setStep("patient");
   };
 
   const confirmBooking = (data: SecretaryPatientData, channel: SecretaryChannel) => {
-    setPatient(data);
     if (!selections.doctor || !selections.type || !selections.slot) {
       return;
     }
+    setPatient(data);
     // An empty email field is sent as absent: the server treats no email as
     // "front-desk/phone patient without one" (CONTEXT.md: Booking Channel).
     booking.submit({
@@ -125,15 +132,16 @@ export function SecretaryBookingForm() {
     });
   };
 
-  const goBack = () => setStep((previous) => Math.max(STEP.SPECIALTY, previous - 1));
+  const goBack = () =>
+    setStep((previous) => STEP_ORDER[Math.max(0, STEP_ORDER.indexOf(previous) - 1)]!);
 
   const startOver = () => {
     setPatient(undefined);
     setSelections({});
-    setStep(STEP.SPECIALTY);
+    setStep("specialty");
   };
 
-  if (step === STEP.CONFIRMATION && booking.result && selections.doctor && selections.type && selections.specialty && selections.slot) {
+  if (step === "confirmation" && booking.result && selections.doctor && selections.type && selections.specialty && selections.slot) {
     const { patient: bookedPatient, appointment } = booking.result;
     return (
       <div className="rounded-2xl border-2 border-green-200 bg-green-50 p-6">
@@ -146,8 +154,8 @@ export function SecretaryBookingForm() {
           {formatDateLong(selections.slot.date)} at {selections.slot.startTime}
         </p>
         <p className="mt-4 text-lg text-gray-700">
-          {bookedPatient.email
-            ? `A confirmation email was sent to ${bookedPatient.email}.`
+          {patient?.email
+            ? `A confirmation email was sent to ${patient.email}.`
             : "No confirmation email was sent because the patient didn't provide one."}
         </p>
         <p className="mt-2 text-sm text-gray-500">
@@ -167,7 +175,7 @@ export function SecretaryBookingForm() {
   return (
     <div className="mx-auto max-w-2xl">
       <StepIndicator current={step} />
-      {step === STEP.SPECIALTY && (
+      {step === "specialty" && (
         <StepCard title="Which specialty?">
           <OptionList
             options={specialties.data ?? []}
@@ -182,7 +190,7 @@ export function SecretaryBookingForm() {
           />
         </StepCard>
       )}
-      {step === STEP.TYPE && (
+      {step === "type" && (
         <StepCard
           title="Which appointment type?"
           subtitle={selections.specialty?.name}
@@ -201,7 +209,7 @@ export function SecretaryBookingForm() {
           />
         </StepCard>
       )}
-      {step === STEP.DOCTOR && (
+      {step === "doctor" && (
         <StepCard
           title="Which doctor?"
           subtitle={`${selections.specialty?.name} — ${selections.type?.name}`}
@@ -220,7 +228,7 @@ export function SecretaryBookingForm() {
           />
         </StepCard>
       )}
-      {step === STEP.SLOT && (
+      {step === "slot" && (
         <StepCard
           title="Pick a time"
           subtitle={`${selections.doctor?.firstName} ${selections.doctor?.lastName} — ${selections.type?.name}`}
@@ -242,7 +250,7 @@ export function SecretaryBookingForm() {
           )}
         </StepCard>
       )}
-      {step === STEP.PATIENT && (
+      {step === "patient" && (
         <StepCard
           title="Patient details"
           subtitle={`${selections.doctor?.firstName} ${selections.doctor?.lastName} — ${selections.slot?.date} at ${selections.slot?.startTime}`}

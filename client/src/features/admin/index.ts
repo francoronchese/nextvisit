@@ -4,7 +4,7 @@ export { BlockSection } from "./components/BlockSection";
 export { SecretaryBookingForm } from "./components/SecretaryBookingForm";
 export { SecretaryDashboard } from "./components/SecretaryDashboard";
 export { WeeklyAvailabilitySection } from "./components/WeeklyAvailabilitySection";
-export { useAdminBooking } from "./hooks/useAdminBooking";
+export { useSecretaryBooking } from "./hooks/useSecretaryBooking";
 export { useAdminDoctors } from "./hooks/useAdminDoctors";
 export { useAvailability } from "./hooks/useAvailability";
 export { useAvailabilityBlocks } from "./hooks/useAvailabilityBlocks";

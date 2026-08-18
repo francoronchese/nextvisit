@@ -24,6 +24,34 @@ type PatientFieldsProps = {
 const inputClass =
   "w-full rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none";
 
+// The public form requires an email; the secretary's booking-on-behalf form
+// treats an empty email as "patient without one". Everything else is shared.
+export function validatePatientFields(
+  data: PatientFieldsData,
+  options: { emailRequired: boolean }
+): PatientFieldsErrors {
+  const errors: PatientFieldsErrors = {};
+  if (!/^\d{7,8}$/.test(data.dni)) {
+    errors.dni = "DNI must be 7 to 8 digits.";
+  }
+  if (!data.firstName.trim()) {
+    errors.firstName = "First name is required.";
+  }
+  if (!data.lastName.trim()) {
+    errors.lastName = "Last name is required.";
+  }
+  if (!data.healthInsuranceId) {
+    errors.healthInsuranceId = "Pick your health insurance.";
+  }
+  if (!data.phone.trim()) {
+    errors.phone = "Phone is required.";
+  }
+  if ((options.emailRequired || data.email.trim()) && !/^\S+@\S+\.\S+$/.test(data.email)) {
+    errors.email = "Enter a valid email address.";
+  }
+  return errors;
+}
+
 // The six patient identity/contact fields shared by the public booking form and
 // the secretary's booking-on-behalf form; only email's requiredness and the
 // phone label vary between them.

@@ -93,10 +93,10 @@ function buildQueries(overrides: Partial<BookingQueries> = {}): BookingQueries {
     ),
     getPatientByDni: vi.fn(() => Promise.resolve(undefined)),
     createPatient: vi.fn((input: PatientInput) =>
-      Promise.resolve({ id: existingPatient.id, ...input })
+      Promise.resolve({ id: existingPatient.id, ...input, email: input.email ?? null })
     ),
     updatePatient: vi.fn((id: string, input: Omit<PatientInput, "dni">) =>
-      Promise.resolve({ id, dni: DNI, ...input })
+      Promise.resolve({ id, dni: DNI, ...input, email: input.email ?? null })
     ),
     createAppointment: vi.fn(() => Promise.resolve(appointment)),
     createOneTimeLink: vi.fn(() => Promise.resolve(oneTimeLink)),
@@ -308,7 +308,7 @@ describe("booking service — secretary booking on behalf", () => {
 
     const outcome = await service.book(noEmailInput, { now: NOW });
 
-    expect(outcome.result.patient.email).toBeUndefined();
+    expect(outcome.result.patient.email).toBeNull();
     expect(outcome.confirmationEmail.to).toBe("");
     expect(queries.createPatient).toHaveBeenCalledWith(
       expect.objectContaining({ email: undefined })
@@ -326,7 +326,7 @@ describe("booking service — secretary booking on behalf", () => {
     expect(outcome.confirmationEmail.to).toBe(patientInput.email);
   });
 
-  it("keeps a previously stored email when a front-desk booking gives none", async () => {
+  it("preserves a stored email but sends no confirmation when the booking gives none", async () => {
     const queries = buildQueries({
       getPatientByDni: vi.fn(() => Promise.resolve(existingPatient)),
     });
@@ -344,6 +344,7 @@ describe("booking service — secretary booking on behalf", () => {
       phone: patientInput.phone,
       email: existingPatient.email,
     });
-    expect(outcome.confirmationEmail.to).toBe(existingPatient.email);
+    expect(outcome.result.patient.email).toBe(existingPatient.email);
+    expect(outcome.confirmationEmail.to).toBe("");
   });
 });

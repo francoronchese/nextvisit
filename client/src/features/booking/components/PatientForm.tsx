@@ -1,35 +1,12 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { PatientFormData } from "../booking.types";
-import { PatientFields, type PatientFieldsErrors } from "./PatientFields";
+import { PatientFields, validatePatientFields, type PatientFieldsErrors } from "./PatientFields";
 
 type PatientFormProps = {
   initial?: PatientFormData;
   onSubmit: (data: PatientFormData) => void;
 };
-
-function validate(data: PatientFormData): PatientFieldsErrors {
-  const errors: PatientFieldsErrors = {};
-  if (!/^\d{7,8}$/.test(data.dni)) {
-    errors.dni = "DNI must be 7 to 8 digits.";
-  }
-  if (!data.firstName.trim()) {
-    errors.firstName = "First name is required.";
-  }
-  if (!data.lastName.trim()) {
-    errors.lastName = "Last name is required.";
-  }
-  if (!data.healthInsuranceId) {
-    errors.healthInsuranceId = "Pick your health insurance.";
-  }
-  if (!data.phone.trim()) {
-    errors.phone = "Phone is required.";
-  }
-  if (!/^\S+@\S+\.\S+$/.test(data.email)) {
-    errors.email = "Enter a valid email address.";
-  }
-  return errors;
-}
 
 export function PatientForm({ initial, onSubmit }: PatientFormProps) {
   const [data, setData] = useState<PatientFormData>(
@@ -39,7 +16,7 @@ export function PatientForm({ initial, onSubmit }: PatientFormProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const fieldErrors = validate(data);
+    const fieldErrors = validatePatientFields(data, { emailRequired: true });
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length === 0) {
       onSubmit(data);
