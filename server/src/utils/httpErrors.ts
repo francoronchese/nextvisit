@@ -27,6 +27,18 @@ export function emailTakenError(): HttpError {
   return httpError(409, "a user with that email already exists", "EmailTakenError");
 }
 
+export function insuranceNameTakenError(): HttpError {
+  return httpError(409, "a health insurance with that name already exists", "InsuranceNameTakenError");
+}
+
+export function insuranceInUseError(): HttpError {
+  return httpError(
+    409,
+    "a health insurance that still covers patients cannot be deleted",
+    "InsuranceInUseError"
+  );
+}
+
 export function cancellationWindowClosedError(): HttpError {
   return httpError(409, "the cancellation window has closed", "CancellationWindowClosedError");
 }

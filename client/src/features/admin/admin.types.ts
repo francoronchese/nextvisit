@@ -38,6 +38,11 @@ export type CreateUserPayload = {
   doctorId?: string;
 };
 
+export type HealthInsuranceInput = {
+  name: string;
+  copayAmount: number;
+};
+
 export type AvailabilityInput = {
   doctorId: string;
   weekday: number;

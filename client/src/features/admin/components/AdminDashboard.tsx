@@ -1,4 +1,5 @@
 import type { User } from "@nextvisit/shared";
+import { HealthInsuranceManager } from "./HealthInsuranceManager";
 import { UserManager } from "./UserManager";
 
 type AdminDashboardProps = {
@@ -20,7 +21,10 @@ export function AdminDashboard({ user, onLogout }: AdminDashboardProps) {
         </button>
       </div>
       <p className="mb-6 text-lg text-gray-600">Signed in as {user.email} ({user.role}).</p>
-      <UserManager />
+      <div className="space-y-10">
+        <HealthInsuranceManager />
+        <UserManager />
+      </div>
     </div>
   );
 }

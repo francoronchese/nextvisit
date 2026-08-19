@@ -13,6 +13,12 @@ import {
 import { createSecretaryBooking } from "../controllers/bookings";
 import { getAppointments, recordAttendance } from "../controllers/adminAppointments";
 import { createUser, listUsers } from "../controllers/users";
+import {
+  createHealthInsurance,
+  deleteHealthInsurance,
+  listHealthInsurances,
+  updateHealthInsurance,
+} from "../controllers/healthInsurances";
 import { requireAdminAuth, requireRole } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -40,3 +46,9 @@ adminRouter.patch("/admin/appointments/:id", requireRole("secretary"), asyncHand
 // credentials for secretaries and doctors).
 adminRouter.get("/admin/users", requireRole("admin"), asyncHandler(listUsers));
 adminRouter.post("/admin/users", requireRole("admin"), asyncHandler(createUser));
+// The health-insurance → copay table is also admin-only (ARCHITECTURE.md §7:
+// admin manages the table so copays are always correct).
+adminRouter.get("/admin/health-insurances", requireRole("admin"), asyncHandler(listHealthInsurances));
+adminRouter.post("/admin/health-insurances", requireRole("admin"), asyncHandler(createHealthInsurance));
+adminRouter.put("/admin/health-insurances/:id", requireRole("admin"), asyncHandler(updateHealthInsurance));
+adminRouter.delete("/admin/health-insurances/:id", requireRole("admin"), asyncHandler(deleteHealthInsurance));

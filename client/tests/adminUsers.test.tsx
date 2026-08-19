@@ -40,6 +40,9 @@ function defaultFetch(input: FetchInput, init?: FetchInit): Promise<Response> {
   if (url === "/api/admin/login" && init?.method === "POST") {
     return Promise.resolve(jsonResponse({ token: "signed-token", user: adminUser }));
   }
+  if (url === "/api/admin/health-insurances") {
+    return Promise.resolve(jsonResponse([]));
+  }
   if (url === "/api/admin/users" && init?.method === "POST") {
     const body = JSON.parse(String(init?.body)) as { email: string; role: string };
     return Promise.resolve(
@@ -92,6 +95,9 @@ describe("admin staff credentials", () => {
       if (url === "/api/admin/login" && init?.method === "POST") {
         return Promise.resolve(jsonResponse({ token: "signed-token", user: adminUser }));
       }
+      if (url === "/api/admin/health-insurances") {
+        return Promise.resolve(jsonResponse([]));
+      }
       if (url === "/api/admin/users" && init?.method === "POST") {
         const body = JSON.parse(String(init?.body)) as { email: string; role: string };
         const created = { ...secretary, id: "b2eebc99-9c0b-4ef8-bb6d-6bb9bd380a19", email: body.email, role: body.role };
@@ -137,6 +143,9 @@ describe("admin staff credentials", () => {
       const url = typeof input === "string" ? input : input.toString();
       if (url === "/api/admin/login" && init?.method === "POST") {
         return Promise.resolve(jsonResponse({ token: "signed-token", user: adminUser }));
+      }
+      if (url === "/api/admin/health-insurances") {
+        return Promise.resolve(jsonResponse([]));
       }
       if (url === "/api/admin/users" && init?.method === "POST") {
         const body = JSON.parse(String(init?.body)) as { email: string; role: string; doctorId: string };
@@ -190,6 +199,9 @@ describe("admin staff credentials", () => {
       const url = typeof input === "string" ? input : input.toString();
       if (url === "/api/admin/login" && init?.method === "POST") {
         return Promise.resolve(jsonResponse({ token: "signed-token", user: adminUser }));
+      }
+      if (url === "/api/admin/health-insurances") {
+        return Promise.resolve(jsonResponse([]));
       }
       if (url === "/api/admin/users" && init?.method === "POST") {
         return Promise.resolve(jsonResponse({ error: "a user with that email already exists" }, 409));

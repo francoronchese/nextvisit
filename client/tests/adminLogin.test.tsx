@@ -42,6 +42,9 @@ describe("admin login", () => {
         expect(body).toEqual({ email: "admin@nextvisit.ar", password: "secret123" });
         return jsonResponse({ token: "signed-token", user: adminUser });
       }
+      if (url === "/api/admin/users" || url === "/api/admin/health-insurances") {
+        return jsonResponse([]);
+      }
       return jsonResponse({ error: "not found" }, 404);
     });
 
