@@ -73,6 +73,7 @@ export async function insertAppointment(
     patientId: string;
     typeId: string;
     startsAt: string;
+    channel?: string;
     status?: string;
     attendance?: string;
   }
@@ -80,13 +81,14 @@ export async function insertAppointment(
   const result = await pool.query(
     `INSERT INTO appointments
       (patient_id, doctor_id, appointment_type_id, starts_at, duration_minutes, booking_channel, copay_amount, status, attendance)
-     VALUES ($1, $2, $3, $4, 30, 'web', 100, $5, $6)
+     VALUES ($1, $2, $3, $4, 30, $5, 100, $6, $7)
      RETURNING id`,
     [
       args.patientId,
       args.doctorId,
       args.typeId,
       args.startsAt,
+      args.channel ?? "web",
       args.status ?? "scheduled",
       args.attendance ?? "pending",
     ]

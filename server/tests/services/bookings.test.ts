@@ -164,7 +164,10 @@ describe("booking service", () => {
       countRecentBookingAttempts: vi.fn(() => Promise.resolve(MAX_BOOKING_ATTEMPTS + 1)),
     });
 
-    await expect(enforceBookingRateLimit(queries, DNI, NOW)).rejects.toMatchObject({ status: 429 });
+    await expect(enforceBookingRateLimit(queries, DNI, NOW)).rejects.toMatchObject({
+      status: 429,
+      message: "too many booking attempts, please try again later",
+    });
     expect(queries.recordBookingAttempt).toHaveBeenCalledWith(DNI);
     expect(queries.countRecentBookingAttempts).toHaveBeenCalledWith(
       DNI,
@@ -172,9 +175,9 @@ describe("booking service", () => {
     );
   });
 
-  it("allows an attempt within the window limit", async () => {
+  it("allows attempts at exactly the window limit", async () => {
     const queries = buildQueries({
-      countRecentBookingAttempts: vi.fn(() => Promise.resolve(MAX_BOOKING_ATTEMPTS - 1)),
+      countRecentBookingAttempts: vi.fn(() => Promise.resolve(MAX_BOOKING_ATTEMPTS)),
     });
 
     await expect(enforceBookingRateLimit(queries, DNI, NOW)).resolves.toBeUndefined();
@@ -215,7 +218,10 @@ describe("booking service", () => {
     });
     const service = buildService(queries);
 
-    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({ status: 422 });
+    await expect(service.book(bookingInput, { now: NOW })).rejects.toMatchObject({
+      status: 422,
+      message: "you already have 3 future appointments",
+    });
     expect(queries.createAppointment).not.toHaveBeenCalled();
   });
 

@@ -4,12 +4,12 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `booking_attempts` table records attempts keyed by DNI with timestamps
-- [ ] Count query: active future appointments per DNI (all booking channels)
-- [ ] Rate limit: reject booking attempts that exceed threshold (configurable)
-- [ ] Booking endpoint returns clear error message when cap is hit
-- [ ] UI: patient sees "You have reached the maximum number of active appointments" on the booking form
-- [ ] Service-layer unit tests: cap enforced, rate limit enforced, error messages correct
-- [ ] Query-layer integration tests: count query correctness
+- [x] `booking_attempts` table records attempts keyed by DNI with timestamps
+- [x] Count query: active future appointments per DNI (all booking channels)
+- [x] Rate limit: reject booking attempts that exceed threshold (configurable)
+- [x] Booking endpoint returns clear error message when cap is hit
+- [x] UI: patient sees "You have reached the maximum number of active appointments" on the booking form
+- [x] Service-layer unit tests: cap enforced, rate limit enforced, error messages correct
+- [x] Query-layer integration tests: count query correctness
