@@ -1,5 +1,5 @@
 import type { User } from "@nextvisit/shared";
-import { queryOne } from "../client";
+import { query, queryOne, requireRow } from "../client";
 import { utcIso } from "../sql";
 
 export type StaffUserRow = {
@@ -21,6 +21,30 @@ export async function getUserByEmail(email: string): Promise<StaffUserRow | unde
      WHERE email = $1`,
     [email]
   );
+}
+
+export async function insertUser(input: {
+  email: string;
+  passwordHash: string;
+  role: User["role"];
+  doctorId: string | null;
+}): Promise<User> {
+  const row = await queryOne<Omit<StaffUserRow, "passwordHash">>(
+    `INSERT INTO users (email, password_hash, role, doctor_id)
+     VALUES ($1, $2, $3, $4)
+     RETURNING ${USER_COLUMNS}`,
+    [input.email, input.passwordHash, input.role, input.doctorId]
+  );
+  return toPublicUser(requireRow(row, "create user"));
+}
+
+export async function listUsers(): Promise<User[]> {
+  const rows = await query<Omit<StaffUserRow, "passwordHash">>(
+    `SELECT ${USER_COLUMNS}
+     FROM users
+     ORDER BY created_at, email`
+  );
+  return rows.map(toPublicUser);
 }
 
 export async function getUserById(id: string): Promise<User | undefined> {

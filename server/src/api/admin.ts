@@ -12,6 +12,7 @@ import {
 } from "../controllers/availability";
 import { createSecretaryBooking } from "../controllers/bookings";
 import { getAppointments, recordAttendance } from "../controllers/adminAppointments";
+import { createUser, listUsers } from "../controllers/users";
 import { requireAdminAuth, requireRole } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -35,3 +36,7 @@ adminRouter.delete("/admin/availability-blocks/:id", asyncHandler(deleteAvailabi
 adminRouter.post("/admin/appointments", requireRole("secretary"), asyncHandler(createSecretaryBooking));
 adminRouter.get("/admin/appointments", requireRole("secretary", "doctor"), asyncHandler(getAppointments));
 adminRouter.patch("/admin/appointments/:id", requireRole("secretary"), asyncHandler(recordAttendance));
+// Credential management is admin-only (CONTEXT.md: Admin creates the
+// credentials for secretaries and doctors).
+adminRouter.get("/admin/users", requireRole("admin"), asyncHandler(listUsers));
+adminRouter.post("/admin/users", requireRole("admin"), asyncHandler(createUser));

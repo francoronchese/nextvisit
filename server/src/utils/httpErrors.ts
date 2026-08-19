@@ -23,6 +23,10 @@ export function invalidCredentialsError(): HttpError {
   return httpError(401, "invalid credentials", "InvalidCredentialsError");
 }
 
+export function emailTakenError(): HttpError {
+  return httpError(409, "a user with that email already exists", "EmailTakenError");
+}
+
 export function cancellationWindowClosedError(): HttpError {
   return httpError(409, "the cancellation window has closed", "CancellationWindowClosedError");
 }

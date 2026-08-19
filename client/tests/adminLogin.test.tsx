@@ -52,7 +52,7 @@ describe("admin login", () => {
     await user.type(screen.getByLabelText("Password"), "secret123");
     await user.click(screen.getByRole("button", { name: /Sign in/ }));
 
-    expect(await screen.findByText(/Welcome back, admin@nextvisit.ar/)).toBeInTheDocument();
+    expect(await screen.findByText(/Signed in as admin@nextvisit.ar/)).toBeInTheDocument();
     expect(getStaffSessionToken()).toBe("signed-token");
   });
 

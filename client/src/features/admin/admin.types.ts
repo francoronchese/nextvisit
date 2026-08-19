@@ -1,4 +1,10 @@
-import type { BlockReason, BookingChannel, BookingResponse, User } from "@nextvisit/shared";
+import type {
+  BlockReason,
+  BookingChannel,
+  BookingResponse,
+  StaffRole,
+  User,
+} from "@nextvisit/shared";
 
 export type {
   AppointmentDetailWithInsurance,
@@ -11,6 +17,8 @@ export type {
   HealthInsurance,
   Slot,
   Specialty,
+  StaffRole,
+  User,
 } from "@nextvisit/shared";
 
 export type LoginCredentials = {
@@ -21,6 +29,13 @@ export type LoginCredentials = {
 export type LoginResponse = {
   token: string;
   user: User;
+};
+
+export type CreateUserPayload = {
+  email: string;
+  password: string;
+  role: StaffRole;
+  doctorId?: string;
 };
 
 export type AvailabilityInput = {

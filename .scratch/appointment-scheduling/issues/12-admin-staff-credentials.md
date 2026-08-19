@@ -4,11 +4,11 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** ready-for-review
 
-- [ ] `POST /api/admin/users` creates a new staff user with role (secretary/doctor)
-- [ ] `GET /api/admin/users` lists all staff users
-- [ ] Password hashed before storage
-- [ ] UI: user management form in `features/admin/` — create, list
-- [ ] Service-layer unit tests: user creation, duplicate email rejected
-- [ ] API contract test: admin creates user, user can log in
+- [x] `POST /api/admin/users` creates a new staff user with role (secretary/doctor)
+- [x] `GET /api/admin/users` lists all staff users
+- [x] Password hashed before storage
+- [x] UI: user management form in `features/admin/` — create, list
+- [x] Service-layer unit tests: user creation, duplicate email rejected
+- [x] API contract test: admin creates user, user can log in

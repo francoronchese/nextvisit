@@ -2,6 +2,7 @@ import { useAdminLogin } from "../hooks/useAdminLogin";
 import { LoginForm } from "../components/LoginForm";
 import { SecretaryDashboard } from "../components/SecretaryDashboard";
 import { DoctorDashboard } from "../components/DoctorDashboard";
+import { AdminDashboard } from "../components/AdminDashboard";
 
 export function AdminLoginPage() {
   const { user, loading, error, login, logout } = useAdminLogin();
@@ -20,18 +21,7 @@ export function AdminLoginPage() {
         ) : user.role === "doctor" ? (
           <DoctorDashboard user={user} onLogout={logout} />
         ) : (
-          <div className="mx-auto max-w-2xl px-4 py-8">
-            <p className="text-lg text-gray-700">
-              Welcome back, {user.email} ({user.role}).
-            </p>
-            <button
-              type="button"
-              onClick={logout}
-              className="mt-4 cursor-pointer rounded-2xl border-2 border-gray-200 px-4 py-2 font-medium text-gray-900 hover:border-blue-400"
-            >
-              Sign out
-            </button>
-          </div>
+          <AdminDashboard user={user} onLogout={logout} />
         )
       ) : (
         <div className="mx-auto max-w-md px-4 py-8">
