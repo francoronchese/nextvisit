@@ -12,6 +12,7 @@ export * from "./appointment";
 export * from "./oneTimeLink";
 export * from "./appointmentDetail";
 export * from "./appointmentDetailWithInsurance";
+export * from "./doctorAppointment";
 export * from "./bookingResponse";
 export * from "./user";
 export * from "./bookingAttempt";

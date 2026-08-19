@@ -11,7 +11,7 @@ import {
   updateAvailability,
 } from "../controllers/availability";
 import { createSecretaryBooking } from "../controllers/bookings";
-import { getAppointmentsByDate, recordAttendance } from "../controllers/adminAppointments";
+import { getAppointments, recordAttendance } from "../controllers/adminAppointments";
 import { requireAdminAuth, requireRole } from "../middlewares/adminAuth";
 import { asyncHandler } from "../utils/asyncHandler";
 
@@ -30,6 +30,8 @@ adminRouter.delete("/admin/availability/:id", asyncHandler(deleteAvailability));
 adminRouter.get("/admin/availability-blocks", asyncHandler(getAvailabilityBlocks));
 adminRouter.post("/admin/availability-blocks", asyncHandler(createAvailabilityBlock));
 adminRouter.delete("/admin/availability-blocks/:id", asyncHandler(deleteAvailabilityBlock));
+// The doctor's panel is read-only (spec): GET is shared with the secretary, but
+// POST/PATCH stay secretary-only so a doctor session can never mutate.
 adminRouter.post("/admin/appointments", requireRole("secretary"), asyncHandler(createSecretaryBooking));
-adminRouter.get("/admin/appointments", requireRole("secretary"), asyncHandler(getAppointmentsByDate));
+adminRouter.get("/admin/appointments", requireRole("secretary", "doctor"), asyncHandler(getAppointments));
 adminRouter.patch("/admin/appointments/:id", requireRole("secretary"), asyncHandler(recordAttendance));

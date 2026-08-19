@@ -1,6 +1,7 @@
 import { useAdminLogin } from "../hooks/useAdminLogin";
 import { LoginForm } from "../components/LoginForm";
 import { SecretaryDashboard } from "../components/SecretaryDashboard";
+import { DoctorDashboard } from "../components/DoctorDashboard";
 
 export function AdminLoginPage() {
   const { user, loading, error, login, logout } = useAdminLogin();
@@ -16,6 +17,8 @@ export function AdminLoginPage() {
       {user ? (
         user.role === "secretary" ? (
           <SecretaryDashboard user={user} onLogout={logout} />
+        ) : user.role === "doctor" ? (
+          <DoctorDashboard user={user} onLogout={logout} />
         ) : (
           <div className="mx-auto max-w-2xl px-4 py-8">
             <p className="text-lg text-gray-700">

@@ -7,6 +7,7 @@ export type {
   AvailabilityBlock,
   BlockReason,
   Doctor,
+  DoctorAppointment,
   HealthInsurance,
   Slot,
   Specialty,

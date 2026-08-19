@@ -4,6 +4,7 @@ import type {
   AppointmentDetailWithInsurance,
   AppointmentType,
   Doctor,
+  DoctorAppointment,
   OneTimeLink,
   Patient,
   Specialty,
@@ -25,6 +26,10 @@ export type AppointmentManagementQueries = {
     id: string,
     input: { attendance: "attended"; copayAmount: number; copayPaid: boolean }
   ): Promise<Appointment | undefined>;
+};
+
+export type DoctorAppointmentQueries = {
+  listUpcomingForDoctor(doctorId: string): Promise<DoctorAppointment[]>;
 };
 
 export function createAppointmentManagementQueries(
@@ -162,6 +167,38 @@ export function createAppointmentManagementQueries(
          WHERE id = $1 AND status <> 'cancelled' AND starts_at <= now()
          RETURNING ${APPOINTMENT_COLUMNS}`,
         [id, input.attendance, input.copayAmount, input.copayPaid]
+      );
+    },
+  };
+}
+
+export function createDoctorAppointmentQueries(
+  executor: QueryExecutor
+): DoctorAppointmentQueries {
+  return {
+    // The doctor panel shows only future, live appointments for the signed-in
+    // doctor. The lean row carries just what the read-only list renders.
+    listUpcomingForDoctor(doctorId) {
+      return executor.query<DoctorAppointment>(
+        `SELECT
+           json_build_object(
+             'id', a.id,
+             'startsAt', ${utcIso("a.starts_at")},
+             'durationMinutes', a.duration_minutes,
+             'status', a.status
+           ) AS appointment,
+           json_build_object(
+             'firstName', p.first_name,
+             'lastName', p.last_name,
+             'dni', p.dni
+           ) AS patient,
+           json_build_object('name', at.name) AS "appointmentType"
+         FROM appointments a
+         JOIN patients p ON p.id = a.patient_id
+         JOIN appointment_types at ON at.id = a.appointment_type_id
+         WHERE a.doctor_id = $1 AND a.starts_at >= now() AND a.status <> 'cancelled'
+         ORDER BY a.starts_at`,
+        [doctorId]
       );
     },
   };
