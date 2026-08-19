@@ -175,7 +175,7 @@ See `DATA-MODEL.md` for the full data model: entity purposes, a Mermaid ER diagr
 - **Cloud Provider**: Vercel — client SPA + serverless functions
 - **Database**: Neon (managed Postgres with connection pooling suited to serverless)
 - **CI/CD**: not set up yet
-- **Cron**: GitHub Actions scheduled workflow (hourly) for the 24h appointment reminders; hits `POST /api/reminders` with `REMINDERS_SECRET` as bearer token (ADR-0005)
+- **Cron**: GitHub Actions scheduled workflows (hourly) for the 24h appointment reminders and the no-show auto-mark job; they hit `POST /api/reminders` and `POST /api/no-shows` with `REMINDERS_SECRET` as bearer token (ADR-0005)
 - **Visual QA**: Puppeteer script capturing screenshots of each view for manual review
 - **Monitoring & Logging**: Vercel logs (basic)
 

@@ -1,15 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
-import { getRemindersSecret } from "../../config/env";
+import { getSchedulerSecret } from "../../config/env";
 
-// The GitHub Actions scheduled workflow authenticates by sending the
-// REMINDERS_SECRET as a bearer token. The route fails closed: an unset secret
-// or a wrong one gets a 401.
-export function requireRemindersSecret(
+// The GitHub Actions scheduled workflows (reminders, no-show auto-mark —
+// ADR-0005) authenticate by sending the REMINDERS_SECRET as a bearer token.
+// The route fails closed: an unset secret or a wrong one gets a 401.
+export function requireSchedulerSecret(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  const expected = getRemindersSecret();
+  const expected = getSchedulerSecret();
   const header = req.headers.authorization;
   const provided = header?.startsWith("Bearer ") ? header.slice("Bearer ".length) : undefined;
   if (!expected || provided !== expected) {
