@@ -10,6 +10,7 @@ import type {
 } from "@nextvisit/shared";
 import {
   createAppointmentManagementService,
+  createSecretaryAppointmentService,
   getAppointmentByToken,
   type AppointmentManagementDeps,
   type RescheduleInput,
@@ -231,7 +232,7 @@ describe("appointment management service", () => {
   it("reschedules onto an available slot, frees the old one, and issues a fresh link", async () => {
     const queries = buildQueries();
     const bookingQueries = buildBookingQueries();
-    const input: RescheduleInput = { date: "2026-11-27", startTime: "10:00" };
+    const input: RescheduleInput = { slot: { date: "2026-11-27", time: "10:00" } };
     const service = buildService(queries, bookingQueries);
 
     const outcome = await service.reschedule(token, input, NOW);
@@ -258,7 +259,7 @@ describe("appointment management service", () => {
   it("rejects rescheduling when the new slot is already taken", async () => {
     const service = buildService(buildQueries(), buildBookingQueries(), buildAvailability(false));
     await expect(
-      service.reschedule(token, { date: "2026-11-27", startTime: "10:00" }, NOW)
+      service.reschedule(token, { slot: { date: "2026-11-27", time: "10:00" } }, NOW)
     ).rejects.toMatchObject({ status: 409 });
   });
 
@@ -271,7 +272,7 @@ describe("appointment management service", () => {
     const service = buildService(buildQueries(), bookingQueries);
 
     await expect(
-      service.reschedule(token, { date: "2026-11-27", startTime: "10:00" }, NOW)
+      service.reschedule(token, { slot: { date: "2026-11-27", time: "10:00" } }, NOW)
     ).rejects.toMatchObject({ status: 409 });
     expect(bookingQueries.createOneTimeLink).not.toHaveBeenCalled();
   });
@@ -286,7 +287,115 @@ describe("appointment management service", () => {
     });
 
     await expect(
-      buildService(queries).reschedule(token, { date: "2026-11-27", startTime: "10:00" }, NOW)
+      buildService(queries).reschedule(token, { slot: { date: "2026-11-27", time: "10:00" } }, NOW)
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("keeps the original booking channel when rescheduling", async () => {
+    const phoneAppointment = { ...appointment, bookingChannel: "phone" as const };
+    const queries = buildQueries({
+      getAppointmentDetail: vi.fn(() =>
+        Promise.resolve({ ...detail, appointment: phoneAppointment })
+      ),
+    });
+    const bookingQueries = buildBookingQueries();
+    const service = buildService(queries, bookingQueries);
+
+    await service.reschedule(token, { slot: { date: "2026-11-27", time: "10:00" } }, NOW);
+
+    expect(bookingQueries.createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingChannel: "phone" })
+    );
+  });
+});
+
+describe("secretary appointment service", () => {
+  it("cancels an appointment by id, without a one-time link or window check", async () => {
+    const queries = buildQueries();
+    const service = createSecretaryAppointmentService({
+      queries,
+      bookingQueries: buildBookingQueries(),
+      availability: buildAvailability(),
+    });
+
+    const outcome = await service.cancel(appointment.id);
+
+    expect(outcome.appointment.status).toBe("cancelled");
+    expect(queries.cancelAppointment).toHaveBeenCalledWith(appointment.id);
+    expect(queries.markOneTimeLinkUsed).not.toHaveBeenCalled();
+    expect(outcome.email.to).toBe(patient.email);
+  });
+
+  it("cancels an appointment whose cancellation window has closed", async () => {
+    const closeAppointment = {
+      ...appointment,
+      startsAt: "2026-11-20T11:00:00.000Z",
+    };
+    const queries = buildQueries({
+      getAppointmentDetail: vi.fn(() =>
+        Promise.resolve({ ...detail, appointment: closeAppointment })
+      ),
+    });
+    const service = createSecretaryAppointmentService({
+      queries,
+      bookingQueries: buildBookingQueries(),
+      availability: buildAvailability(),
+    });
+
+    await expect(service.cancel(appointment.id)).resolves.toBeDefined();
+  });
+
+  it("rejects cancelling an appointment that is not scheduled anymore", async () => {
+    const queries = buildQueries({
+      cancelAppointment: vi.fn(() => Promise.resolve(undefined)),
+    });
+    const service = createSecretaryAppointmentService({
+      queries,
+      bookingQueries: buildBookingQueries(),
+      availability: buildAvailability(),
+    });
+
+    await expect(service.cancel(appointment.id)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("reschedules by id onto an available slot, preserving the channel", async () => {
+    const phoneAppointment = { ...appointment, bookingChannel: "phone" as const };
+    const queries = buildQueries({
+      getAppointmentDetail: vi.fn(() =>
+        Promise.resolve({ ...detail, appointment: phoneAppointment })
+      ),
+    });
+    const bookingQueries = buildBookingQueries();
+    const service = createSecretaryAppointmentService({
+      queries,
+      bookingQueries,
+      availability: buildAvailability(),
+    });
+
+    const outcome = await service.reschedule(
+      appointment.id,
+      { slot: { date: "2026-11-27", time: "10:00" } },
+      NOW
+    );
+
+    expect(bookingQueries.createAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingChannel: "phone" })
+    );
+    expect(outcome.email.oneTimeLinkUrl).toContain("/appointments/");
+  });
+
+  it("rejects rescheduling a non-existent appointment", async () => {
+    const queries = buildQueries({
+      getAppointmentDetail: vi.fn(() => Promise.resolve(undefined)),
+    });
+    const service = createSecretaryAppointmentService({
+      queries,
+      bookingQueries: buildBookingQueries(),
+      availability: buildAvailability(),
+    });
+
+    await expect(
+      service.reschedule(appointment.id, { slot: { date: "2026-11-27", time: "10:00" } }, NOW)
+    ).rejects.toMatchObject({ status: 404 });
   });
 });

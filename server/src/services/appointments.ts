@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import type { Appointment, AppointmentDetail, ClinicLocalTime } from "@nextvisit/shared";
 import { clinicLocalToUtc } from "@nextvisit/shared";
 import { query, queryOne, withTransaction } from "../db/client";
@@ -10,7 +9,6 @@ import { createBookingQueries, type BookingQueries } from "../db/queries/booking
 import { createSlotQueries } from "../db/queries/slots";
 import { getAppointmentTypeById } from "../db/queries/catalog";
 import {
-  buildOneTimeLinkUrl,
   resendNotifier,
   sendBestEffort,
   type CancellationEmailInput,
@@ -18,6 +16,7 @@ import {
 } from "../utils/email";
 import { cancellationWindowClosedError, notFoundError, slotUnavailableError } from "../utils/httpErrors";
 import { isConstraintViolation } from "../utils/isConstraintViolation";
+import { issueOneTimeLink } from "./oneTimeLink";
 import { createSlotsService, type SlotsService } from "./slots";
 
 // Online cancel/reschedule is allowed until 3h before the appointment (spec:
@@ -25,8 +24,7 @@ import { createSlotsService, type SlotsService } from "./slots";
 export const CANCELLATION_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 export type RescheduleInput = {
-  date: string;
-  startTime: string;
+  slot: ClinicLocalTime;
 };
 
 export type AppointmentManagementDeps = {
@@ -73,6 +71,77 @@ function assertWithinCancellationWindow(appointment: Appointment, now: Date): vo
   }
 }
 
+// The cancellation core, shared by the online link flow and the secretary: frees
+// the appointment (only a scheduled one cancels) and builds the notice email.
+async function performCancel(
+  deps: AppointmentManagementDeps,
+  detail: AppointmentDetail
+): Promise<CancelOutcome> {
+  const cancelled = await deps.queries.cancelAppointment(detail.appointment.id);
+  if (!cancelled) throw notFoundError("appointment");
+  return {
+    appointment: cancelled,
+    email: {
+      to: detail.patient.email ?? "",
+      patient: detail.patient,
+      appointment: cancelled,
+    },
+  };
+}
+
+// The reschedule core, shared by the online link flow and the secretary: one
+// atomic transaction that frees the old slot and books the new one, keeping the
+// patient, doctor, type, copay, and the channel it was booked through (spec:
+// channels exist so the clinic knows how each patient books).
+async function performReschedule(
+  deps: AppointmentManagementDeps,
+  detail: AppointmentDetail,
+  input: RescheduleInput,
+  now: Date
+): Promise<RescheduleOutcome> {
+  const old = detail.appointment;
+
+  // 1. Free the old slot inside the transaction so a failed reschedule leaves
+  //    the appointment exactly as it was.
+  const cancelled = await deps.queries.cancelAppointment(old.id);
+  if (!cancelled) throw notFoundError("appointment");
+
+  // 2. The new slot must be open. The tx-scoped slots service sees the
+  //    just-cancelled appointment, so rescheduling onto it works.
+  const available = await deps.availability.getAvailableSlot(old.doctorId, old.appointmentTypeId, input.slot, now);
+  if (!available) throw slotUnavailableError();
+
+  const startsAt = clinicLocalToUtc(input.slot).toISOString();
+  let created;
+  try {
+    created = await deps.bookingQueries.createAppointment({
+      patientId: old.patientId,
+      doctorId: old.doctorId,
+      appointmentTypeId: old.appointmentTypeId,
+      startsAt,
+      durationMinutes: available.durationMinutes,
+      bookingChannel: old.bookingChannel,
+      copayAmount: old.copayAmount,
+    });
+  } catch (error) {
+    // Someone else grabbed the slot between the check and the insert.
+    if (isConstraintViolation(error)) throw slotUnavailableError();
+    throw error;
+  }
+
+  const { url } = await issueOneTimeLink(deps.bookingQueries, created, available.durationMinutes);
+
+  return {
+    appointment: created,
+    email: {
+      to: detail.patient.email ?? "",
+      patient: detail.patient,
+      appointment: created,
+      oneTimeLinkUrl: url,
+    },
+  };
+}
+
 export async function getAppointmentByToken(
   queries: AppointmentManagementQueries,
   token: string,
@@ -83,84 +152,48 @@ export async function getAppointmentByToken(
 }
 
 export function createAppointmentManagementService(deps: AppointmentManagementDeps) {
-  const { queries, bookingQueries, availability } = deps;
+  const { queries } = deps;
 
   return {
     async cancel(token: string, now: Date): Promise<CancelOutcome> {
       const { link, detail } = await resolveValidLink(queries, token, now);
       assertWithinCancellationWindow(detail.appointment, now);
 
-      const cancelled = await queries.cancelAppointment(detail.appointment.id);
-      // Lost the race to another request using the same link.
-      if (!cancelled) throw notFoundError("appointment link");
+      const outcome = await performCancel(deps, detail);
+      // Single-use (spec): burning the link happens in the same transaction, so
+      // a failed cancel leaves it untouched.
       await queries.markOneTimeLinkUsed(link.id);
-
-      return {
-        appointment: cancelled,
-        email: {
-          to: detail.patient.email ?? "",
-          patient: detail.patient,
-          appointment: cancelled,
-        },
-      };
+      return outcome;
     },
 
     async reschedule(token: string, input: RescheduleInput, now: Date): Promise<RescheduleOutcome> {
       const { link, detail } = await resolveValidLink(queries, token, now);
       assertWithinCancellationWindow(detail.appointment, now);
-      const old = detail.appointment;
-      const slot = { date: input.date, time: input.startTime } satisfies ClinicLocalTime;
 
-      // 1. Free the old slot and burn the link inside the transaction so a
-      //    failed reschedule leaves the appointment exactly as it was.
-      const cancelled = await queries.cancelAppointment(old.id);
-      if (!cancelled) throw notFoundError("appointment link");
+      const outcome = await performReschedule(deps, detail, input, now);
+      // Burn the old link when the new appointment is booked, inside the same
+      // transaction (spec: a failed reschedule leaves everything as it was).
       await queries.markOneTimeLinkUsed(link.id);
+      return outcome;
+    },
+  };
+}
 
-      // 2. The new slot must be open. The tx-scoped slots service sees the
-      //    just-cancelled appointment, so rescheduling onto it works.
-      const available = await availability.getAvailableSlot(old.doctorId, old.appointmentTypeId, slot, now);
-      if (!available) throw slotUnavailableError();
+// The secretary reaches appointments by id, not by one-time link, and is not
+// bound by the patient's cancellation window (spec: after the window closes
+// only the secretary can change the appointment).
+export function createSecretaryAppointmentService(deps: AppointmentManagementDeps) {
+  return {
+    async cancel(id: string): Promise<CancelOutcome> {
+      const detail = await deps.queries.getAppointmentDetail(id);
+      if (!detail) throw notFoundError("appointment");
+      return performCancel(deps, detail);
+    },
 
-      const startsAt = clinicLocalToUtc(slot).toISOString();
-      let created;
-      try {
-        created = await bookingQueries.createAppointment({
-          patientId: old.patientId,
-          doctorId: old.doctorId,
-          appointmentTypeId: old.appointmentTypeId,
-          startsAt,
-          durationMinutes: available.durationMinutes,
-          bookingChannel: "web",
-          copayAmount: old.copayAmount,
-        });
-      } catch (error) {
-        // Someone else grabbed the slot between the check and the insert.
-        if (isConstraintViolation(error)) throw slotUnavailableError();
-        throw error;
-      }
-
-      const newToken = randomBytes(32).toString("hex");
-      // Same expiry rule as the original booking: the link lives until the
-      // appointment ends, so reschedule-from-the-grid stays consistent.
-      const expiresAt = new Date(
-        new Date(created.startsAt).getTime() + available.durationMinutes * 60_000
-      ).toISOString();
-      await bookingQueries.createOneTimeLink({
-        appointmentId: created.id,
-        token: newToken,
-        expiresAt,
-      });
-
-      return {
-        appointment: created,
-        email: {
-          to: detail.patient.email ?? "",
-          patient: detail.patient,
-          appointment: created,
-          oneTimeLinkUrl: buildOneTimeLinkUrl(newToken),
-        },
-      };
+    async reschedule(id: string, input: RescheduleInput, now: Date): Promise<RescheduleOutcome> {
+      const detail = await deps.queries.getAppointmentDetail(id);
+      if (!detail) throw notFoundError("appointment");
+      return performReschedule(deps, detail, input, now);
     },
   };
 }
@@ -202,6 +235,41 @@ export const appointmentManagementService: AppointmentManagementService = {
         bookingQueries: createBookingQueries(tx),
         availability: createSlotsService({ ...createSlotQueries(tx), getAppointmentTypeById }),
       }).reschedule(token, input, now);
+    });
+    await sendBestEffort(() => resendNotifier.sendRescheduleConfirmationEmail(email));
+    return appointment;
+  },
+};
+
+export type SecretaryAppointmentService = {
+  cancel(id: string): Promise<Appointment>;
+  reschedule(id: string, input: RescheduleInput): Promise<Appointment>;
+};
+
+// Email is best-effort and sent only after the transaction commits, so a
+// transient Resend failure can never roll back the appointment change.
+export const secretaryAppointmentService: SecretaryAppointmentService = {
+  async cancel(id) {
+    const { appointment, email } = await withTransaction(async (tx) => {
+      const queries = createAppointmentManagementQueries(tx);
+      return createSecretaryAppointmentService({
+        queries,
+        bookingQueries: createBookingQueries(tx),
+        availability: createSlotsService({ ...createSlotQueries(tx), getAppointmentTypeById }),
+      }).cancel(id);
+    });
+    await sendBestEffort(() => resendNotifier.sendCancellationEmail(email));
+    return appointment;
+  },
+
+  async reschedule(id, input) {
+    const { appointment, email } = await withTransaction(async (tx) => {
+      const queries = createAppointmentManagementQueries(tx);
+      return createSecretaryAppointmentService({
+        queries,
+        bookingQueries: createBookingQueries(tx),
+        availability: createSlotsService({ ...createSlotQueries(tx), getAppointmentTypeById }),
+      }).reschedule(id, input, new Date());
     });
     await sendBestEffort(() => resendNotifier.sendRescheduleConfirmationEmail(email));
     return appointment;

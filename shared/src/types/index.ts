@@ -14,6 +14,7 @@ export * from "./appointmentDetail";
 export * from "./appointmentDetailWithInsurance";
 export * from "./doctorAppointment";
 export * from "./bookingResponse";
+export * from "./loginResponse";
 export * from "./user";
 export * from "./bookingAttempt";
 export * from "./slot";

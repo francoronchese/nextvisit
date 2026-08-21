@@ -71,8 +71,7 @@ const bookingInput: BookAppointmentInput = {
   ...patientInput,
   doctorId,
   typeId,
-  date: availableSlot.date,
-  startTime: availableSlot.startTime,
+  slot: { date: availableSlot.date, time: availableSlot.startTime },
 };
 
 function buildAvailability(): SlotsService {

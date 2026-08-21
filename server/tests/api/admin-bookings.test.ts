@@ -250,6 +250,27 @@ describe("admin secretary booking API", () => {
     expect(res.body).toEqual({ error: "you already have 3 future appointments" });
   });
 
+  it("never rate-limits secretary bookings (anti-spam guards the web channel only)", async () => {
+    // A web booking would hit the 5-per-hour DNI limit on the 6th attempt; the
+    // secretary path must sail past it. The 3-per-DNI cap still applies, so the
+    // 4th+ attempts fail on the cap — and never on a 429.
+    const fixture = await seedBookingContext("desk-norate");
+    const token = await secretaryToken();
+    const dni = "34444444";
+    const statuses: number[] = [];
+
+    for (const startTime of ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"]) {
+      const res = await request(app)
+        .post("/api/admin/appointments")
+        .set("Authorization", `Bearer ${token}`)
+        .send(bookingPayload(fixture, dni, startTime));
+      statuses.push(res.status);
+    }
+
+    expect(statuses).toEqual([201, 201, 201, 422, 422, 422]);
+    expect(statuses).not.toContain(429);
+  });
+
   it("rejects a booking channel outside the secretary vocabulary", async () => {
     const fixture = await seedBookingContext("desk-channel");
     const token = await secretaryToken();

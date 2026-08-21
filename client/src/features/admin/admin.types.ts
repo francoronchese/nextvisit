@@ -2,8 +2,10 @@ import type {
   BlockReason,
   BookingChannel,
   BookingResponse,
+  LoginResponse,
   StaffRole,
   User,
+  Weekday,
 } from "@nextvisit/shared";
 
 export type {
@@ -15,20 +17,17 @@ export type {
   Doctor,
   DoctorAppointment,
   HealthInsurance,
+  LoginResponse,
   Slot,
   Specialty,
   StaffRole,
   User,
+  Weekday,
 } from "@nextvisit/shared";
 
 export type LoginCredentials = {
   email: string;
   password: string;
-};
-
-export type LoginResponse = {
-  token: string;
-  user: User;
 };
 
 export type CreateUserPayload = {
@@ -45,7 +44,7 @@ export type HealthInsuranceInput = {
 
 export type AvailabilityInput = {
   doctorId: string;
-  weekday: number;
+  weekday: Weekday;
   startTime: string;
   endTime: string;
 };

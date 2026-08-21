@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import type { Weekday } from "@nextvisit/shared";
 import type { Availability, AvailabilityInput } from "../admin.types";
 import { ErrorBanner } from "../../../components/ErrorBanner";
 import { LoadState } from "../../../components/LoadState";
@@ -19,7 +20,7 @@ type WeeklyAvailabilitySectionProps = {
 export function WeeklyAvailabilitySection({ doctorId }: WeeklyAvailabilitySectionProps) {
   const { weeklyHours, loading, error, retry, addWindow, updateWindow, removeWindow } =
     useAvailability(doctorId);
-  const [weekday, setWeekday] = useState(1);
+  const [weekday, setWeekday] = useState<Weekday>(1);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export function WeeklyAvailabilitySection({ doctorId }: WeeklyAvailabilitySectio
 
   const startEditing = (window: Availability) => {
     setEditingId(window.id);
-    setWeekday(window.weekday);
+    setWeekday(window.weekday as Weekday);
     setStartTime(window.startTime);
     setEndTime(window.endTime);
   };
@@ -64,7 +65,7 @@ export function WeeklyAvailabilitySection({ doctorId }: WeeklyAvailabilitySectio
           <span className="mb-1 block text-lg text-gray-700">Day</span>
           <select
             value={weekday}
-            onChange={(event) => setWeekday(Number(event.target.value))}
+            onChange={(event) => setWeekday(Number(event.target.value) as Weekday)}
             className="rounded-2xl border-2 border-gray-200 p-3 text-lg text-gray-900 focus:border-blue-400 focus:outline-none"
           >
             {WEEKDAYS.map((name, index) => (

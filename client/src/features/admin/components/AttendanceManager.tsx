@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { utcToClinicParts } from "@nextvisit/shared";
+import { utcToClinicParts, type Slot } from "@nextvisit/shared";
 import { LoadState } from "../../../components/LoadState";
 import type { AppointmentDetailWithInsurance } from "../admin.types";
+import { useAdminAppointmentManagement } from "../hooks/useAdminAppointmentManagement";
 import { useDayAppointments } from "../hooks/useDayAppointments";
 import { useRecordAttendance } from "../hooks/useRecordAttendance";
 import { AttendanceForm } from "./AttendanceForm";
+import { ReschedulePanel } from "./ReschedulePanel";
 
 const ATTENDANCE_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -21,17 +23,41 @@ const ATTENDANCE_STYLES: Record<string, string> = {
 export function AttendanceManager() {
   const [date, setDate] = useState(utcToClinicParts(new Date()).date);
   const [selected, setSelected] = useState<AppointmentDetailWithInsurance>();
+  const [rescheduling, setRescheduling] = useState<AppointmentDetailWithInsurance>();
   const day = useDayAppointments(date);
   const record = useRecordAttendance();
+  const management = useAdminAppointmentManagement();
 
-  // A different day invalidates the appointment currently open in the form.
+  // A different day invalidates the appointment currently open in the form and
+  // any in-flight reschedule/cancel notice.
   useEffect(() => {
     setSelected(undefined);
+    setRescheduling(undefined);
+    management.begin();
   }, [date]);
 
   const handleRecorded = () => {
     setSelected(undefined);
     day.retry();
+  };
+
+  const handleCancel = async (entry: AppointmentDetailWithInsurance) => {
+    const { appointment, patient } = entry;
+    const time = utcToClinicParts(new Date(appointment.startsAt)).time;
+    const confirmed = window.confirm(
+      `Cancel the appointment for ${patient.firstName} ${patient.lastName} at ${time}?`
+    );
+    if (!confirmed) return;
+    const ok = await management.cancel(appointment.id);
+    if (ok) day.retry();
+  };
+
+  const handleReschedule = async (entry: AppointmentDetailWithInsurance, slot: Slot) => {
+    const ok = await management.reschedule(entry.appointment.id, slot);
+    if (ok) {
+      setRescheduling(undefined);
+      day.retry();
+    }
   };
 
   return (
@@ -62,16 +88,21 @@ export function AttendanceManager() {
               const time = utcToClinicParts(new Date(appointment.startsAt)).time;
               const attended = appointment.attendance === "attended";
               return (
-                <li key={appointment.id}>
+                <li
+                  key={appointment.id}
+                  className="flex items-center gap-2 rounded-2xl border-2 border-gray-200 bg-white p-4"
+                >
                   <button
                     type="button"
                     disabled={attended}
                     onClick={() => {
                       record.clear();
+                      management.begin();
+                      setRescheduling(undefined);
                       setSelected(entry);
                     }}
                     aria-pressed={selected?.appointment.id === appointment.id}
-                    className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-2xl border-2 border-gray-200 bg-white p-4 text-left hover:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex flex-1 cursor-pointer items-center justify-between gap-4 text-left disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span className="text-lg font-semibold text-gray-900">{time}</span>
                     <span className="flex-1 text-gray-900">
@@ -86,12 +117,53 @@ export function AttendanceManager() {
                       {ATTENDANCE_LABELS[appointment.attendance]}
                     </span>
                   </button>
+                  {appointment.status === "scheduled" && !attended && (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          record.clear();
+                          management.begin();
+                          setSelected(undefined);
+                          setRescheduling(entry);
+                        }}
+                        className="cursor-pointer rounded-xl border-2 border-blue-200 px-3 py-1 text-sm font-semibold text-blue-700 hover:border-blue-400"
+                      >
+                        Reschedule
+                      </button>
+                      <button
+                        type="button"
+                        disabled={management.busyId === appointment.id}
+                        onClick={() => handleCancel(entry)}
+                        className="cursor-pointer rounded-xl border-2 border-red-200 px-3 py-1 text-sm font-semibold text-red-700 hover:border-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ul>
         )}
       </LoadState>
+
+      {management.success && !rescheduling && !selected && (
+        <p className="rounded-2xl border-2 border-green-200 bg-green-50 p-4 text-lg text-green-900">
+          {management.success}
+        </p>
+      )}
+
+      {rescheduling && (
+        <ReschedulePanel
+          record={rescheduling}
+          busy={management.busyId === rescheduling.appointment.id}
+          error={management.error}
+          slotUnavailable={management.slotUnavailable}
+          onSubmit={(slot) => handleReschedule(rescheduling, slot)}
+          onClose={() => setRescheduling(undefined)}
+        />
+      )}
 
       {selected && !record.recorded && (
         <AttendanceForm

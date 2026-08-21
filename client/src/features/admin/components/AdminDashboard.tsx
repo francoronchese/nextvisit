@@ -1,4 +1,5 @@
 import type { User } from "@nextvisit/shared";
+import { DashboardShell } from "../../../components/DashboardShell";
 import { HealthInsuranceManager } from "./HealthInsuranceManager";
 import { UserManager } from "./UserManager";
 
@@ -9,22 +10,11 @@ type AdminDashboardProps = {
 
 export function AdminDashboard({ user, onLogout }: AdminDashboardProps) {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Admin panel</h2>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="cursor-pointer rounded-2xl border-2 border-gray-200 px-4 py-2 font-medium text-gray-900 hover:border-blue-400"
-        >
-          Sign out
-        </button>
-      </div>
-      <p className="mb-6 text-lg text-gray-600">Signed in as {user.email} ({user.role}).</p>
+    <DashboardShell title="Admin panel" user={user} onLogout={onLogout}>
       <div className="space-y-10">
         <HealthInsuranceManager />
         <UserManager />
       </div>
-    </div>
+    </DashboardShell>
   );
 }

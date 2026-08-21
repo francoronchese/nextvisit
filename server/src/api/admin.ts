@@ -11,7 +11,12 @@ import {
   updateAvailability,
 } from "../controllers/availability";
 import { createSecretaryBooking } from "../controllers/bookings";
-import { getAppointments, recordAttendance } from "../controllers/adminAppointments";
+import {
+  cancelAppointment,
+  getAppointments,
+  recordAttendance,
+  rescheduleAppointment,
+} from "../controllers/adminAppointments";
 import { createUser, listUsers } from "../controllers/users";
 import {
   createHealthInsurance,
@@ -42,6 +47,10 @@ adminRouter.delete("/admin/availability-blocks/:id", asyncHandler(deleteAvailabi
 adminRouter.post("/admin/appointments", requireRole("secretary"), asyncHandler(createSecretaryBooking));
 adminRouter.get("/admin/appointments", requireRole("secretary", "doctor"), asyncHandler(getAppointments));
 adminRouter.patch("/admin/appointments/:id", requireRole("secretary"), asyncHandler(recordAttendance));
+// Cancel/reschedule by appointment id (spec: the secretary can change any
+// appointment, including ones past the patient's cancellation window).
+adminRouter.post("/admin/appointments/:id/cancel", requireRole("secretary"), asyncHandler(cancelAppointment));
+adminRouter.post("/admin/appointments/:id/reschedule", requireRole("secretary"), asyncHandler(rescheduleAppointment));
 // Credential management is admin-only (CONTEXT.md: Admin creates the
 // credentials for secretaries and doctors).
 adminRouter.get("/admin/users", requireRole("admin"), asyncHandler(listUsers));

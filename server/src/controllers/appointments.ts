@@ -34,9 +34,13 @@ export async function rescheduleAppointment(req: Request, res: Response): Promis
   if (!token) return;
   const body = parseRequest(rescheduleAppointmentSchema, req.body, res, "invalid body");
   if (!body) return;
+  // The wire spells the slot {date, startTime}; the service wants a ClinicLocalTime.
   await respondWithResource(
     res,
-    () => appointmentManagementService.reschedule(token, body),
+    () =>
+      appointmentManagementService.reschedule(token, {
+        slot: { date: body.date, time: body.startTime },
+      }),
     { schema: appointmentSchema }
   );
 }

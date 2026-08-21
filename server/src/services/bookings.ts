@@ -1,11 +1,11 @@
-import { randomBytes } from "node:crypto";
 import type { BookingChannel, BookingResponse, ClinicLocalTime } from "@nextvisit/shared";
+import { clinicLocalToUtc } from "@nextvisit/shared";
 import { query, queryOne, withTransaction } from "../db/client";
 import { createBookingQueries, type BookingQueries } from "../db/queries/bookings";
-import { buildOneTimeLinkUrl, resendNotifier, sendBestEffort, type ConfirmationEmailInput } from "../utils/email";
-import { clinicLocalToUtc } from "@nextvisit/shared";
+import { resendNotifier, sendBestEffort, type ConfirmationEmailInput } from "../utils/email";
 import { bookingRateLimitedError, notFoundError, slotUnavailableError, tooManyAppointmentsError } from "../utils/httpErrors";
 import { isConstraintViolation } from "../utils/isConstraintViolation";
+import { issueOneTimeLink } from "./oneTimeLink";
 import { slotsService, type SlotsService } from "./slots";
 
 export const MAX_ACTIVE_APPOINTMENTS = 3;
@@ -24,8 +24,9 @@ export type BookAppointmentInput = {
   email?: string;
   doctorId: string;
   typeId: string;
-  date: string;
-  startTime: string;
+  // The clinic-local slot being booked; the wire format spells it {date,
+  // startTime}, the controller hands it over as a ClinicLocalTime.
+  slot: ClinicLocalTime;
   // Web bookings are always "web"; the secretary passes "front_desk" or "phone".
   bookingChannel?: BookingChannel;
 };
@@ -74,7 +75,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
   return {
     async book(input, options) {
       const now = options?.now ?? new Date();
-      const slot = { date: input.date, time: input.startTime } satisfies ClinicLocalTime;
+      const slot = input.slot;
 
       // Per-DNI serialization first (spec: cap enforced inside the booking
       // transaction): concurrent bookings for the same DNI queue here, so the
@@ -135,17 +136,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
         throw error;
       }
 
-      const token = randomBytes(32).toString("hex");
-      // The link dies when the appointment ends, not when it starts, so the
-      // patient can still manage the booking right up to the last minute.
-      const expiresAt = new Date(
-        new Date(appointment.startsAt).getTime() + available.durationMinutes * 60_000
-      ).toISOString();
-      await queries.createOneTimeLink({
-        appointmentId: appointment.id,
-        token,
-        expiresAt,
-      });
+      const { url } = await issueOneTimeLink(queries, appointment, available.durationMinutes);
 
       return {
         result: { patient, appointment },
@@ -153,7 +144,7 @@ export function createBookingService(deps: BookingServiceDeps): BookingServiceCo
           to: input.email ?? "",
           patient,
           appointment,
-          oneTimeLinkUrl: buildOneTimeLinkUrl(token),
+          oneTimeLinkUrl: url,
         },
       };
     },
@@ -165,7 +156,12 @@ const poolBookingQueries = createBookingQueries({ query, queryOne });
 export const bookingService: BookingService = {
   async book(input, options) {
     const now = options?.now ?? new Date();
-    await enforceBookingRateLimit(poolBookingQueries, input.dni, now);
+    // Anti-spam guards the web channel (US 20): the rate limit discourages fake
+    // online bookings. The secretary books a verified patient at the desk or by
+    // phone, so those attempts are never throttled.
+    if ((input.bookingChannel ?? "web") === "web") {
+      await enforceBookingRateLimit(poolBookingQueries, input.dni, now);
+    }
     const outcome = await withTransaction(async (tx) => {
       const queries = createBookingQueries(tx);
       return createBookingService({

@@ -1,84 +1,37 @@
 import { useEffect, useState } from "react";
 import { formatDateLong } from "@nextvisit/shared";
-import { ErrorBanner } from "../../../components/ErrorBanner";
 import {
-  OptionList,
-  SlotGrid,
+  CatalogSteps,
   StepCard,
-  useAppointmentTypes,
-  useDoctorsForType,
-  useSpecialties,
-  useSlots,
+  StepIndicator,
+  useCatalogSelections,
+  type CatalogStep,
 } from "../../booking";
-import type { AppointmentType, Doctor, SecretaryChannel, Slot, Specialty } from "../admin.types";
+import type { AppointmentType, Doctor, SecretaryChannel, SecretaryPatientData, Slot, Specialty } from "../admin.types";
 import { useSecretaryBooking } from "../hooks/useSecretaryBooking";
 import { SecretaryPatientForm } from "./SecretaryPatientForm";
-import type { SecretaryPatientData } from "../admin.types";
 
-type Selections = {
-  specialty?: Specialty;
-  type?: AppointmentType;
-  doctor?: Doctor;
-  slot?: Slot;
-};
-
-type SecretaryStep = "specialty" | "type" | "doctor" | "slot" | "patient" | "confirmation";
+type SecretaryStep = CatalogStep | "patient" | "confirmation";
 
 const STEP_ORDER: SecretaryStep[] = ["specialty", "type", "doctor", "slot", "patient", "confirmation"];
 
-const STEP_LABELS: Record<SecretaryStep, string> = {
-  specialty: "Specialty",
-  type: "Appointment type",
-  doctor: "Doctor",
-  slot: "Slot",
-  patient: "Patient",
-  confirmation: "Confirmed",
-};
+const STEP_LABELS = ["Specialty", "Appointment type", "Doctor", "Slot", "Patient", "Confirmed"];
 
-function StepIndicator({ current }: { current: SecretaryStep }) {
-  const currentIndex = STEP_ORDER.indexOf(current);
-  return (
-    <ol aria-label="Progress" className="mb-8 flex flex-wrap items-center justify-center gap-2">
-      {STEP_ORDER.map((step, index) => {
-        const state =
-          index === currentIndex
-            ? "bg-blue-700 text-white"
-            : index < currentIndex
-              ? "bg-blue-100 text-blue-800"
-              : "bg-gray-100 text-gray-500";
-        return (
-          <li key={step} className="flex items-center gap-2">
-            <span
-              aria-current={index === currentIndex ? "step" : undefined}
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${state}`}
-            >
-              {index + 1}. {STEP_LABELS[step]}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+const CATALOG_STEPS: CatalogStep[] = ["specialty", "type", "doctor", "slot"];
 
 export function SecretaryBookingForm() {
   const [step, setStep] = useState<SecretaryStep>("specialty");
   const [patient, setPatient] = useState<SecretaryPatientData>();
-  const [selections, setSelections] = useState<Selections>({});
+  const catalog = useCatalogSelections();
   const booking = useSecretaryBooking();
-
-  const specialties = useSpecialties();
-  const types = useAppointmentTypes(selections.specialty?.id);
-  const doctors = useDoctorsForType(selections.type?.id);
-  const slots = useSlots(selections.doctor?.id, selections.type?.id);
+  const { selections, specialties, types, doctors, slots } = catalog;
 
   // A slot taken by someone else needs a fresh grid, a cleared pick, and a
   // return to the slot step so the secretary can choose another time.
   useEffect(() => {
     if (booking.slotUnavailable) {
-      setSelections((previous) => ({ ...previous, slot: undefined }));
+      catalog.recoverSlot();
       setStep("slot");
-      slots.retry();
     }
   }, [booking.slotUnavailable]);
 
@@ -89,28 +42,22 @@ export function SecretaryBookingForm() {
   }, [booking.result]);
 
   const selectSpecialty = (specialty: Specialty) => {
-    setSelections((previous) =>
-      previous.specialty?.id === specialty.id ? { ...previous, specialty } : { specialty }
-    );
+    catalog.selectSpecialty(specialty);
     setStep("type");
   };
 
   const selectType = (type: AppointmentType) => {
-    setSelections((previous) =>
-      previous.type?.id === type.id
-        ? { ...previous, type }
-        : { ...previous, type, doctor: undefined, slot: undefined }
-    );
+    catalog.selectType(type);
     setStep("doctor");
   };
 
   const selectDoctor = (doctor: Doctor) => {
-    setSelections((previous) => ({ ...previous, doctor, slot: undefined }));
+    catalog.selectDoctor(doctor);
     setStep("slot");
   };
 
   const selectSlot = (slot: Slot) => {
-    setSelections((previous) => ({ ...previous, slot }));
+    catalog.selectSlot(slot);
     setStep("patient");
   };
 
@@ -137,7 +84,7 @@ export function SecretaryBookingForm() {
 
   const startOver = () => {
     setPatient(undefined);
-    setSelections({});
+    catalog.reset();
     setStep("specialty");
   };
 
@@ -174,81 +121,29 @@ export function SecretaryBookingForm() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <StepIndicator current={step} />
-      {step === "specialty" && (
-        <StepCard title="Which specialty?">
-          <OptionList
-            options={specialties.data ?? []}
-            getKey={(specialty) => specialty.id}
-            getLabel={(specialty) => specialty.name}
-            loading={specialties.loading}
-            error={specialties.error}
-            emptyLabel="No specialties available."
-            selectedId={selections.specialty?.id}
-            onSelect={selectSpecialty}
-            onRetry={specialties.retry}
-          />
-        </StepCard>
-      )}
-      {step === "type" && (
-        <StepCard
-          title="Which appointment type?"
-          subtitle={selections.specialty?.name}
+      <StepIndicator labels={STEP_LABELS} current={STEP_ORDER.indexOf(step)} />
+      {CATALOG_STEPS.includes(step as CatalogStep) && (
+        <CatalogSteps
+          step={step as CatalogStep}
+          selections={selections}
+          specialties={specialties}
+          types={types}
+          doctors={doctors}
+          slots={slots}
+          labels={{
+            specialty: "Which specialty?",
+            type: "Which appointment type?",
+            doctor: "Which doctor?",
+            slot: "Pick a time",
+          }}
+          onSelectSpecialty={selectSpecialty}
+          onSelectType={selectType}
+          onSelectDoctor={selectDoctor}
+          onSelectSlot={selectSlot}
           onBack={goBack}
-        >
-          <OptionList
-            options={types.data ?? []}
-            getKey={(type) => type.id}
-            getLabel={(type) => `${type.name} (${type.durationMinutes} min)`}
-            loading={types.loading}
-            error={types.error}
-            emptyLabel="No appointment types for this specialty."
-            selectedId={selections.type?.id}
-            onSelect={selectType}
-            onRetry={types.retry}
-          />
-        </StepCard>
-      )}
-      {step === "doctor" && (
-        <StepCard
-          title="Which doctor?"
-          subtitle={`${selections.specialty?.name} — ${selections.type?.name}`}
-          onBack={goBack}
-        >
-          <OptionList
-            options={doctors.data ?? []}
-            getKey={(doctor) => doctor.id}
-            getLabel={(doctor) => `${doctor.firstName} ${doctor.lastName}`}
-            loading={doctors.loading}
-            error={doctors.error}
-            emptyLabel="No doctors available for this appointment type."
-            selectedId={selections.doctor?.id}
-            onSelect={selectDoctor}
-            onRetry={doctors.retry}
-          />
-        </StepCard>
-      )}
-      {step === "slot" && (
-        <StepCard
-          title="Pick a time"
-          subtitle={`${selections.doctor?.firstName} ${selections.doctor?.lastName} — ${selections.type?.name}`}
-          onBack={goBack}
-        >
-          <SlotGrid
-            slots={slots.data ?? []}
-            loading={slots.loading}
-            error={slots.error}
-            selectedSlot={selections.slot}
-            onSelect={selectSlot}
-            onRetry={slots.retry}
-          />
-          {booking.slotUnavailable && (
-            <ErrorBanner>{`${booking.error} Please pick another time.`}</ErrorBanner>
-          )}
-          {!booking.slotUnavailable && booking.error && (
-            <ErrorBanner>{booking.error}</ErrorBanner>
-          )}
-        </StepCard>
+          slotUnavailable={booking.slotUnavailable}
+          bookingError={booking.error}
+        />
       )}
       {step === "patient" && (
         <StepCard

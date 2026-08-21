@@ -144,10 +144,10 @@ describe("secretary attendance & copay", () => {
     expect(
       screen.getByText(/This patient was marked no-show automatically/)
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Copay \(booked from IOMA\)/)).toHaveValue(5000);
+    expect(screen.getByLabelText(/Copay \(from IOMA\)/)).toHaveValue(5000);
 
-    await user.clear(screen.getByLabelText(/Copay \(booked from IOMA\)/));
-    await user.type(screen.getByLabelText(/Copay \(booked from IOMA\)/), "4500");
+    await user.clear(screen.getByLabelText(/Copay \(from IOMA\)/));
+    await user.type(screen.getByLabelText(/Copay \(from IOMA\)/), "4500");
     await user.click(screen.getByLabelText("Copay paid"));
     await user.click(screen.getByRole("button", { name: "Mark attended & record copay" }));
 
@@ -168,7 +168,7 @@ describe("secretary attendance & copay", () => {
     });
   });
 
-  it("pre-fills from the booked copay on the appointment, not the live insurance amount", async () => {
+  it("pre-fills from the live insurance copay, not the amount booked at appointment time", async () => {
     const record = detailRecord({ attendance: "no_show", status: "ended" });
     const divergent = {
       ...record,
@@ -189,9 +189,10 @@ describe("secretary attendance & copay", () => {
     await signInAndOpenAttendance(user);
     await user.click(await screen.findByRole("button", { name: /Ana Pérez/ }));
 
-    // The insurance copay is 5000 but the appointment was booked at 3500; the
-    // form shows the booked amount (spec: the appointment carries the copay).
-    expect(screen.getByLabelText(/Copay \(booked from IOMA\)/)).toHaveValue(3500);
+    // The appointment was booked at 3500 but the insurance copay is 5000; the
+    // form shows the current insurance amount (spec: pre-filled from the
+    // patient's health insurance, the secretary only confirms it).
+    expect(screen.getByLabelText(/Copay \(from IOMA\)/)).toHaveValue(5000);
   });
 
   it("reopens the attendance form for the next appointment after a record", async () => {
@@ -214,7 +215,7 @@ describe("secretary attendance & copay", () => {
     await signInAndOpenAttendance(user);
 
     await user.click(await screen.findByRole("button", { name: /Ana Pérez/ }));
-    await user.clear(screen.getByLabelText(/Copay \(booked from IOMA\)/));
+    await user.clear(screen.getByLabelText(/Copay \(from IOMA\)/));
     await user.click(screen.getByRole("button", { name: "Mark attended & record copay" }));
 
     expect(await screen.findByText("Enter a valid copay amount")).toBeInTheDocument();

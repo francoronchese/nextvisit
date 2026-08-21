@@ -12,11 +12,12 @@ type AttendanceFormProps = {
 
 export function AttendanceForm({ record, submitting, error, onSubmit }: AttendanceFormProps) {
   const { appointment, patient, doctor, appointmentType, insurance } = record;
-  // The booking flow records the insurance copay on the appointment, so the
-  // amount shown is the one fixed at booking; editing the insurance later must
-  // not silently change what this patient is charged (spec: the appointment
-  // carries the copay). The secretary only confirms or adjusts it.
-  const [copayAmount, setCopayAmount] = useState(String(appointment.copayAmount));
+  // The copay comes from the patient's health insurance at the moment they
+  // arrive (US 29 / spec: pre-filled from the insurance so the secretary only
+  // confirms it). The amount booked on the appointment is not shown here — if
+  // the clinic updates the insurance copay later, the secretary confirms the
+  // current one.
+  const [copayAmount, setCopayAmount] = useState(String(insurance.copayAmount));
   const [copayPaid, setCopayPaid] = useState(false);
   const [amountError, setAmountError] = useState<string | null>(null);
   const attended = appointment.attendance === "attended";
@@ -56,7 +57,7 @@ export function AttendanceForm({ record, submitting, error, onSubmit }: Attendan
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block">
               <span className="mb-1 block text-lg text-gray-700">
-                Copay (booked from {insurance.name})
+                Copay (from {insurance.name})
               </span>
               <input
                 type="number"
