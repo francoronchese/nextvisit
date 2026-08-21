@@ -186,6 +186,21 @@ CREATE TABLE booking_attempts (
 CREATE INDEX booking_attempts_dni_attempted_at_idx ON booking_attempts (dni, attempted_at);
 
 -- ============================================================================
+-- Login rate limiting
+-- ============================================================================
+
+CREATE TABLE login_attempts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  ip text NOT NULL,
+  attempted_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX login_attempts_email_attempted_at_idx ON login_attempts (email, attempted_at);
+
+CREATE INDEX login_attempts_ip_attempted_at_idx ON login_attempts (ip, attempted_at);
+
+-- ============================================================================
 -- Migration bookkeeping (maintained by server/src/db/migrate.ts)
 -- ============================================================================
 

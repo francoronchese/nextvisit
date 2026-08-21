@@ -7,11 +7,13 @@ import { catalogRouter } from "./api/catalog";
 import { noShowsRouter } from "./api/noShows";
 import { remindersRouter } from "./api/reminders";
 import { slotsRouter } from "./api/slots";
+import { corsAllowlist } from "./middlewares/cors";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 
+app.use(corsAllowlist);
 app.use(express.json());
 
 app.get("/health", (_req, res) => {

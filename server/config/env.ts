@@ -21,10 +21,15 @@ export function getTestDatabaseUrl(): string {
   return url;
 }
 
+// A weak secret lets anyone forge admin session tokens (HMAC-SHA256 over a
+// predictable payload), so production refuses anything under 32 characters.
 export function getAuthTokenSecret(): string {
   const secret = process.env.AUTH_TOKEN_SECRET;
   if (!secret) {
     throw new Error("AUTH_TOKEN_SECRET is not set (see .env.example at the repo root)");
+  }
+  if (process.env.NODE_ENV === "production" && secret.length < 32) {
+    throw new Error("AUTH_TOKEN_SECRET is too weak for production (use at least 32 random characters)");
   }
   return secret;
 }

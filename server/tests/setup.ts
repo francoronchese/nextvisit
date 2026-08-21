@@ -8,3 +8,7 @@ process.env.REMINDERS_SECRET = "test-reminders-secret";
 // The email contract test (tests/api/emails.test.ts) mocks the resend module
 // and sets its own key before the app imports.
 delete process.env.RESEND_API_KEY;
+// The login rate limit counts every /api/admin/login call, and API suites log
+// in repeatedly from supertest's single IP. Raise the cap globally; the
+// rate-limit contract test lowers it for its own scenario and restores it.
+process.env.MAX_LOGIN_ATTEMPTS = "1000";

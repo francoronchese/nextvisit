@@ -182,7 +182,7 @@ See `DATA-MODEL.md` for the full data model: entity purposes, a Mermaid ER diagr
 ## 7. Security Considerations
 
 - **No patient accounts**: the DNI is the identity anchor; the one-time link is the authorization to cancel/reschedule. Tokens are single-use and expire when the appointment passes.
-- **Admin auth**: email + password (hashed), for admin/secretary/doctor surfaces only.
+- **Admin auth**: email + password (hashed), for admin/secretary/doctor surfaces only. Login attempts are rate-limited per email + IP (`MAX_LOGIN_ATTEMPTS` per 15 min, default 5).
 - **RBAC**: admin (creates credentials, manages health insurance/copay table), secretary (availability, booking on behalf, attendance/copay), doctor (read-only own appointments).
 - **Anti-spam**: maximum 3 active future appointments per DNI (all booking channels) + rate limit on booking attempts per DNI.
 - **Data protection**: TLS in transit; PII (DNI, email, phone) protected and not exposed in responses beyond what's needed; secrets via Vercel environment variables.

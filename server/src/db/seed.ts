@@ -151,10 +151,21 @@ async function upsertUser(email: string, role: UserRole, doctorId?: string): Pro
 }
 
 async function seed(): Promise<void> {
+  // The seed truncates real data, so against a production database it must be
+  // an explicit, deliberate act rather than a stray `pnpm db:seed` away.
+  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_DATA_LOSS !== "yes") {
+    console.error(
+      "Refusing to seed a production database without SEED_ALLOW_DATA_LOSS=yes " +
+        "(this wipes appointments and patients)."
+    );
+    process.exitCode = 1;
+    return;
+  }
+
   // Authoritative seed: reset everything the seed owns so the catalog always
   // matches SPECIALTIES exactly (upserts alone would leave stale rows behind).
   await pool.query(
-    `TRUNCATE one_time_links, booking_attempts, appointments, patients, availabilities,
+    `TRUNCATE one_time_links, booking_attempts, login_attempts, appointments, patients, availabilities,
      availability_blocks, users, doctor_appointment_types, appointment_types, doctors,
      health_insurances, specialties RESTART IDENTITY CASCADE`
   );

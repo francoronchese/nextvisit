@@ -1,8 +1,13 @@
 import bcrypt from "bcryptjs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { User } from "@nextvisit/shared";
 import type { StaffUserRow } from "../../src/db/queries/users";
-import { createAuthService, type AuthQueries } from "../../src/services/auth";
+import {
+  createAuthService,
+  DEFAULT_MAX_LOGIN_ATTEMPTS,
+  enforceLoginRateLimit,
+  type AuthQueries,
+} from "../../src/services/auth";
 
 const PASSWORD = "secret123";
 
@@ -98,5 +103,59 @@ describe("auth service", () => {
       buildFakeQueries({ getUserById: () => Promise.resolve(undefined) })
     );
     await expect(noUser.authenticate(token)).resolves.toBeUndefined();
+  });
+});
+
+describe("login rate limit", () => {
+  const now = new Date("2026-08-20T12:00:00.000Z");
+
+  function buildAttemptQueries(count: number) {
+    let attempts = count;
+    return {
+      recordLoginAttempt: () => {
+        attempts += 1;
+        return Promise.resolve();
+      },
+      countRecentLoginAttempts: () => Promise.resolve(attempts),
+    };
+  }
+
+  afterEach(() => {
+    delete process.env.MAX_LOGIN_ATTEMPTS;
+  });
+
+  it("allows logins while the attempt count stays within the cap", async () => {
+    const queries = buildAttemptQueries(DEFAULT_MAX_LOGIN_ATTEMPTS - 1);
+    await expect(
+      enforceLoginRateLimit(queries, "admin@nextvisit.ar", "10.0.0.9", now)
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects the login once the cap is exceeded", async () => {
+    const queries = buildAttemptQueries(DEFAULT_MAX_LOGIN_ATTEMPTS + 1);
+    await expect(
+      enforceLoginRateLimit(queries, "admin@nextvisit.ar", "10.0.0.9", now)
+    ).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("honours a MAX_LOGIN_ATTEMPTS override", async () => {
+    process.env.MAX_LOGIN_ATTEMPTS = "2";
+    const queries = buildAttemptQueries(3);
+    await expect(
+      enforceLoginRateLimit(queries, "admin@nextvisit.ar", "10.0.0.9", now)
+    ).rejects.toMatchObject({ status: 429 });
+  });
+
+  it("normalizes the email before counting attempts", async () => {
+    let recordedEmail = "";
+    const queries = {
+      recordLoginAttempt: (email: string) => {
+        recordedEmail = email;
+        return Promise.resolve();
+      },
+      countRecentLoginAttempts: () => Promise.resolve(0),
+    };
+    await enforceLoginRateLimit(queries, "  Admin@NextVisit.AR  ", "10.0.0.9", now);
+    expect(recordedEmail).toBe("admin@nextvisit.ar");
   });
 });

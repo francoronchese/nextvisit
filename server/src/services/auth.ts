@@ -1,9 +1,18 @@
 import bcrypt from "bcryptjs";
 import type { User } from "@nextvisit/shared";
 import type { StaffUserRow } from "../db/queries/users";
+import type { LoginAttemptQueries } from "../db/queries/loginAttempts";
 import { getUserByEmail, getUserById, toPublicUser } from "../db/queries/users";
-import { invalidCredentialsError } from "../utils/httpErrors";
+import { invalidCredentialsError, loginRateLimitedError } from "../utils/httpErrors";
 import { signSessionToken, verifySessionToken } from "../utils/sessionToken";
+
+export const DEFAULT_MAX_LOGIN_ATTEMPTS = 5;
+export const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+function configuredMaxLoginAttempts(): number {
+  const parsed = Number(process.env.MAX_LOGIN_ATTEMPTS);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_LOGIN_ATTEMPTS;
+}
 
 export type AuthQueries = {
   getUserByEmail(email: string): Promise<StaffUserRow | undefined>;
@@ -21,6 +30,24 @@ export type AuthService = {
 };
 
 let dummyPasswordHash: string | undefined;
+
+// Mirrors the booking rate limit (services/bookings.ts): the attempt is
+// recorded before it is judged, so failed logins accumulate even when they are
+// rejected. Keyed on email + IP, so one attacker cannot lock out a colleague.
+export async function enforceLoginRateLimit(
+  queries: Pick<LoginAttemptQueries, "recordLoginAttempt" | "countRecentLoginAttempts">,
+  email: string,
+  ip: string,
+  now: Date
+): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  await queries.recordLoginAttempt(normalizedEmail, ip);
+  const since = new Date(now.getTime() - LOGIN_ATTEMPT_WINDOW_MS).toISOString();
+  const attempts = await queries.countRecentLoginAttempts(normalizedEmail, ip, since);
+  if (attempts > configuredMaxLoginAttempts()) {
+    throw loginRateLimitedError();
+  }
+}
 
 async function compareAgainstKnownHash(
   password: string,

@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 
 export async function truncateAll(pool: Pool): Promise<void> {
   await pool.query(
-    "TRUNCATE appointments, one_time_links, booking_attempts, patients, users, doctor_appointment_types, availabilities, availability_blocks, doctors, appointment_types, health_insurances, specialties RESTART IDENTITY CASCADE"
+    "TRUNCATE appointments, one_time_links, booking_attempts, login_attempts, patients, users, doctor_appointment_types, availabilities, availability_blocks, doctors, appointment_types, health_insurances, specialties RESTART IDENTITY CASCADE"
   );
 }
 
